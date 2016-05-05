@@ -3,8 +3,8 @@ from random import randint
 
 from tornado.ioloop import PeriodicCallback
 
-from lampost.context.resource import m_requires
-from lampost.context.config import m_configured
+from lampost.di.resource import m_requires
+from lampost.di.config import m_configured
 
 
 m_requires(__name__, 'log', 'datastore')

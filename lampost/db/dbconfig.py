@@ -1,7 +1,7 @@
 from collections import defaultdict
 
-from lampost.context.resource import m_requires
-from lampost.datastore.dbo import DBOField, ParentDBO, ChildDBO, CoreDBO
+from lampost.di.resource import m_requires
+from lampost.db.dbo import DBOField, ParentDBO, ChildDBO, CoreDBO
 
 
 m_requires(__name__, 'log', 'datastore')

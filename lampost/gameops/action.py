@@ -2,9 +2,9 @@ import inspect
 
 import itertools
 
-from lampost.context.resource import m_requires
-from lampost.core.auto import AutoField
-from lampost.core.meta import CoreMeta
+from lampost.di.resource import m_requires
+from lampost.meta.auto import AutoField
+from lampost.meta.core import CoreMeta
 from lampost.gameops import target_gen
 from lampost.util.lputil import ClientError
 

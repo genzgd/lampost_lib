@@ -1,10 +1,8 @@
 import time
 
-import lampost.datastore.classes
 from lampost.di.resource import m_requires
 from lampost.db.registry import get_dbo_class
 from lampost.editor.admin import admin_op
-from lampost.model.player import Player
 
 m_requires(__name__, 'log', 'datastore', 'perm', 'config_manager')
 
@@ -43,14 +41,6 @@ def rebuild_owner_refs():
             else:
                 warn("owner id {} not found, setting owner of {} to default {}", owner_id, dbo_key, owner_field.default)
                 dbo.change_owner()
-
-
-@admin_op
-def rebuild_immortal_list():
-    delete_key('immortals')
-    for player in load_object_set(Player):
-        if player.imm_level:
-            set_db_hash('immortals', player.dbo_id, player.imm_level)
 
 
 @admin_op
