@@ -2,26 +2,13 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="4e146131-d418-4a3d-ac57-cab7a0575472" name="Default" comment="">
-      <change type="DELETED" beforePath="$PROJECT_DIR$/lampost/gameops/permissions.py" afterPath="" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/.idea/dictionaries/Geoffrey.xml" afterPath="$PROJECT_DIR$/.idea/dictionaries/Geoffrey.xml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/db/permissions.py" afterPath="$PROJECT_DIR$/lampost/db/permissions.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/editor/admin.py" afterPath="$PROJECT_DIR$/lampost/editor/admin.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/editor/editor.py" afterPath="$PROJECT_DIR$/lampost/editor/editor.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/editor/session.py" afterPath="$PROJECT_DIR$/lampost/editor/session.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/gameops/friend.py" afterPath="$PROJECT_DIR$/lampost/gameops/friend.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/gameops/parser.py" afterPath="$PROJECT_DIR$/lampost/gameops/parser.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/gameops/script.py" afterPath="$PROJECT_DIR$/lampost/gameops/script.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/gameops/target_gen.py" afterPath="$PROJECT_DIR$/lampost/gameops/target_gen.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/meta/core.py" afterPath="$PROJECT_DIR$/lampost/meta/core.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/server/channel.py" afterPath="$PROJECT_DIR$/lampost/server/channel.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/server/message.py" afterPath="$PROJECT_DIR$/lampost/server/message.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/server/services.py" afterPath="$PROJECT_DIR$/lampost/server/services.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/server/session.py" afterPath="$PROJECT_DIR$/lampost/server/session.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/server/settings.py" afterPath="$PROJECT_DIR$/lampost/server/settings.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/server/user.py" afterPath="$PROJECT_DIR$/lampost/server/user.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/setup/newsetup.py" afterPath="$PROJECT_DIR$/lampost/setup/newsetup.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/setup/tools.py" afterPath="$PROJECT_DIR$/lampost/setup/tools.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/lampost/util/logging.py" afterPath="$PROJECT_DIR$/lampost/util/logging.py" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/.name" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/dictionaries/Geoffrey.xml" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/encodings.xml" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/lampost.iml" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/misc.xml" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/modules.xml" afterPath="" />
+      <change type="DELETED" beforePath="$PROJECT_DIR$/.idea/workspace.xml" afterPath="" />
     </list>
     <ignored path="lampostcore.iws" />
     <ignored path=".idea/workspace.xml" />
@@ -110,7 +97,7 @@
       <file leaf-file-name=".gitignore" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/.gitignore">
           <provider selected="true" editor-type-id="text-editor">
-            <state vertical-scroll-proportion="0.07194245">
+            <state vertical-scroll-proportion="0.047206923">
               <caret line="4" column="0" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
               <folding />
             </state>
@@ -524,7 +511,13 @@
       <option name="project" value="LOCAL" />
       <updated>1462372264820</updated>
     </task>
-    <option name="localTasksCounter" value="2" />
+    <task id="LOCAL-00002" summary="Merge remote-tracking branch 'remotes/origin/master' into cleanup&#10;&#10;Conflicts:&#10;&#9;.idea/workspace.xml&#10;">
+      <created>1463768924455</created>
+      <option name="number" value="00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1463768924455</updated>
+    </task>
+    <option name="localTasksCounter" value="3" />
     <servers />
   </component>
   <component name="ToolWindowManager">
@@ -533,7 +526,7 @@
     <layout>
       <window_info id="Project" active="true" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.2593328" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3295626" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
+      <window_info id="Messages" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.3295626" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Database" active="false" anchor="right" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="3" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -566,7 +559,8 @@
   <component name="VcsManagerConfiguration">
     <MESSAGE value="First package structure." />
     <MESSAGE value="Manual cleanup merge." />
-    <option name="LAST_COMMIT_MESSAGE" value="Manual cleanup merge." />
+    <MESSAGE value="Merge remote-tracking branch 'remotes/origin/master' into cleanup&#10;&#10;Conflicts:&#10;&#9;.idea/workspace.xml&#10;" />
+    <option name="LAST_COMMIT_MESSAGE" value="Merge remote-tracking branch 'remotes/origin/master' into cleanup&#10;&#10;Conflicts:&#10;&#9;.idea/workspace.xml&#10;" />
   </component>
   <component name="XDebuggerManager">
     <breakpoint-manager />
@@ -769,7 +763,7 @@
     </entry>
     <entry file="file://$PROJECT_DIR$/.gitignore">
       <provider selected="true" editor-type-id="text-editor">
-        <state vertical-scroll-proportion="0.07194245">
+        <state vertical-scroll-proportion="0.047206923">
           <caret line="4" column="0" selection-start-line="4" selection-start-column="0" selection-end-line="4" selection-end-column="0" />
           <folding />
         </state>
