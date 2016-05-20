@@ -1,5 +1,5 @@
-from lampost.context.config import m_configured
-from lampost.context.resource import m_requires
+from lampost.di.config import m_configured
+from lampost.di.resource import m_requires
 from lampost.util.lputil import PermError
 
 m_requires(__name__, 'datastore')
