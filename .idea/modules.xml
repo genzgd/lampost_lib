@@ -3,6 +3,7 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/../lampost/.idea/lampost.iml" filepath="$PROJECT_DIR$/../lampost/.idea/lampost.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/lampost_lib.iml" filepath="$PROJECT_DIR$/.idea/lampost_lib.iml" />
     </modules>
   </component>
 </project>
