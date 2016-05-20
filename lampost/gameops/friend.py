@@ -1,6 +1,6 @@
 from lampost.server.user import User
-from lampost.context.resource import m_requires
-from lampost.context.config import m_configured
+from lampost.di.resource import m_requires
+from lampost.di.config import m_configured
 from lampost.util.lputil import ClientError
 
 m_requires(__name__, 'datastore', 'dispatcher', 'session_manager', 'user_manager', 'email_sender', 'perm')

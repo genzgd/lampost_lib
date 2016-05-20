@@ -1,7 +1,7 @@
 from lampost.server.services import ClientService
 from lampost.gameops.action import make_action
-from lampost.context.resource import m_requires
-from lampost.context.config import m_configured
+from lampost.di.resource import m_requires
+from lampost.di.config import m_configured
 from lampost.util.lputil import timestamp
 
 m_requires(__name__, 'dispatcher', 'datastore', 'channel_service')

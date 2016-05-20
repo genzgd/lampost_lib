@@ -1,14 +1,15 @@
-from lampost.context import resource, scripts, config
-from lampost.datastore.redisstore import RedisStore
-from lampost.gameops import dbconfig
+from lampost.di import resource, config
+from lampost.db.redisstore import RedisStore
+from lampost.db import dbconfig
 from lampost.util.logging import LogFactory
+from lampost.util import json
 
 resource.m_requires(__name__, 'log')
 
 
 def _prepare():
     resource.register('log', LogFactory())
-    scripts.select_json()
+    json.select_json()
 
 
 def reset_config(args):
@@ -27,7 +28,7 @@ def reset_config(args):
             print("No yaml found.  Confirm config/working directory?")
             return
         db_config = dbconfig.create(config_id, config_yaml, True)
-    except Exception as exp:
+    except Exception:
         exception("Failed to create configuration from yaml")
         datastore.save_object(existing)
         print("Exception creating configuration from yaml.")

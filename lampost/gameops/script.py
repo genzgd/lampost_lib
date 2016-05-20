@@ -2,10 +2,10 @@ import bisect
 import inspect
 from collections import defaultdict
 
-from lampost.context.resource import m_requires
-from lampost.core.auto import AutoField
-from lampost.datastore.dbo import ChildDBO, DBOFacet
-from lampost.datastore.dbofield import DBOField
+from lampost.di.resource import m_requires
+from lampost.meta.auto import AutoField
+from lampost.db.dbo import ChildDBO, DBOFacet
+from lampost.db.dbofield import DBOField
 
 m_requires(__name__, 'log', 'datastore', 'dispatcher')
 

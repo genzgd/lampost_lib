@@ -1,11 +1,10 @@
 from base64 import b64decode
 import time
 
-from lampost.context.resource import m_requires
-from lampost.datastore.dbo import KeyDBO, SystemDBO
-from lampost.datastore.dbofield import DBOField
-from lampost.datastore.exceptions import DataError
-from lampost.model.player import Player
+from lampost.di.resource import m_requires
+from lampost.db.dbo import KeyDBO, SystemDBO
+from lampost.db.dbofield import DBOField
+from lampost.db.exceptions import DataError
 from lampost.util.encrypt import make_hash, check_password
 from lampost.util.lputil import ClientError
 
@@ -69,7 +68,7 @@ class UserManager():
         user_id = get_index("ix:user:user_name", user_name)
         if user_id:
             return load_object(user_id, User)
-        player = load_object(user_name, Player)
+        player = load_object(user_name, "player")
         if player:
             return load_object(player.user_id, User)
         return None
@@ -97,7 +96,7 @@ class UserManager():
         return player
 
     def find_player(self, player_id):
-        return load_object(player_id, Player)
+        return load_object(player_id, "player")
 
     def create_user(self, user_name, password, email=""):
         user_raw = {'dbo_id': db_counter('user_id'), 'user_name': user_name,
@@ -119,7 +118,7 @@ class UserManager():
             raise DataError("InUse: {}".format(account_name))
 
     def player_exists(self, player_id):
-        return object_exists(Player.dbo_key_type, player_id)
+        return object_exists("player", player_id)
 
     def _user_connect(self, user, client_data):
         client_data.update({'user_id': user.dbo_id, 'player_ids': user.player_ids, 'displays': user.displays,
@@ -163,7 +162,7 @@ class UserManager():
         dispatch('player_deleted', player_id)
 
     def _player_delete(self, player_id):
-        player = load_object(player_id, Player)
+        player = load_object(player_id, "player")
         if player:
             dispatch('publish_edit', 'delete', player)
             delete_object(player)
