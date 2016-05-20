@@ -1,8 +1,8 @@
 import logging
 
-from lampost.core.meta import CoreMeta
-from lampost.datastore.classes import get_dbo_class
-from lampost.datastore.dbofield import DBOField, DBOTField
+from lampost.meta.core import CoreMeta
+from lampost.db.registry import get_dbo_class
+from lampost.db.dbofield import DBOField, DBOTField
 
 log = logging.getLogger(__name__)
 
