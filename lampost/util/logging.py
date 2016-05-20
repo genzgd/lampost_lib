@@ -1,4 +1,3 @@
-import sys
 import inspect
 import logging
 
@@ -44,6 +43,7 @@ class LogFactory():
 
 logging.setLoggerClass(LoggerFmt)
 log_format = '{asctime: <20}  {levelname: <8} {name: <26}  {message}'
+root_logger = None
 
 
 def init_config(args):

@@ -3,8 +3,8 @@ from datetime import datetime, timedelta
 from os import urandom
 from base64 import b64encode
 
-from lampost.context.resource import m_requires, requires
-from lampost.context.config import m_configured
+from lampost.di.resource import m_requires, requires
+from lampost.di.config import m_configured
 from lampost.util.lputil import ClientError
 
 m_requires(__name__, 'log', 'dispatcher', 'user_manager')

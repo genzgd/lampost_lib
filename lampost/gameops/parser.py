@@ -1,7 +1,7 @@
 import itertools
 
 from lampost.gameops import target_gen
-from lampost.context.resource import m_requires
+from lampost.di.resource import m_requires
 from lampost.gameops.action import find_actions
 from lampost.util.lputil import find_extra, ClientError
 

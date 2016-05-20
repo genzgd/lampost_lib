@@ -1,8 +1,7 @@
 from tornado.web import RequestHandler
 
 from lampost.server.handlers import SessionHandler
-from lampost.context.resource import m_requires
-from lampost.model.player import Player
+from lampost.di.resource import m_requires
 from lampost.util.lputil import ClientError
 
 m_requires(__name__, 'log', 'session_manager', 'user_manager', 'datastore',
@@ -57,7 +56,7 @@ class EditLogin(SessionHandler):
             self.session.append({'login_failure': "Invalid user name or password."})
             return
         imm = None
-        for player in (load_object(player_id, Player) for player_id in user.player_ids):
+        for player in (load_object(player_id, "player") for player_id in user.player_ids):
             if player.dbo_id == user_name:
                 if player.imm_level:
                     imm = player
