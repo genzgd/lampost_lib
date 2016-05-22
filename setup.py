@@ -1,9 +1,6 @@
 import pypandoc
 
 from setuptools import setup, find_packages
-from os import path
-
-here = path.abspath(path.dirname(__file__))
 
 long_description=pypandoc.convert('README.md', 'rst')
 

@@ -13,4 +13,3 @@ class ObjectExistsError(DataError):
 class NonUniqueError(DataError):
     def __init__(self, index_name, value):
         super().__init__("NonUnique:  {} already exists in index {}.".format(value, index_name))
-
