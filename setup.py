@@ -23,7 +23,7 @@ setup(
 
         'Intended Audience :: Developers',
 
-        'Topic :: Software Development :: Libraries :: Application Frameworks'
+        'Topic :: Software Development :: Libraries :: Application Frameworks',
 
         'License :: OSI Approved :: MIT License',
 
