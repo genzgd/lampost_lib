@@ -1,11 +1,15 @@
+import pypandoc
+
 from setuptools import setup, find_packages
+
+long_description=pypandoc.convert('README.md', 'rst')
 
 setup(
     use_scm_version=True,
     setup_requires=['setuptools_scm'],
     name='lampost_lib',
     description='Multiuser environment web app framework ',
-    long_description='Please see README.md for the full description',
+    long_description=long_description,
 
     url='https://github.com/genzgd/lampost_lib',
 
@@ -23,8 +27,6 @@ setup(
 
         'License :: OSI Approved :: MIT License',
 
-        'Programming Language :: Python :: 3.2',
-        'Programming Language :: Python :: 3.3',
         'Programming Language :: Python :: 3.4',
         'Programming Language :: Python :: 3.5',
     ],
