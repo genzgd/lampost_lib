@@ -14,3 +14,6 @@
 /*.egg-info
 /*.egg
 
+#Mac annoyances
+.DS_Store
+
