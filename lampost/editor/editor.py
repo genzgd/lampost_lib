@@ -17,7 +17,10 @@ class Editor(MethodHandler):
         check_perm(self.player, self)
 
     def initialize(self, obj_class, imm_level='builder'):
-        self.obj_class = obj_class
+        try:
+            self.obj_class = get_dbo_class(obj_class)
+        except KeyError:
+            self.obj_class = obj_class
         self.imm_level = imm_level
         self.dbo_key_type = obj_class.dbo_key_type
         if hasattr(obj_class, 'dbo_children_types'):

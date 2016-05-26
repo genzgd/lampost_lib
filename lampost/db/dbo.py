@@ -9,7 +9,7 @@ from lampost.db.dbofield import DBOField
 m_requires(__name__, 'log', 'perm', 'datastore')
 
 
-class DBOFacet(metaclass=CoreMeta, AutoAttrInit):
+class DBOFacet(AutoAttrInit):
     dbo_fields = {}
 
     @classmethod
