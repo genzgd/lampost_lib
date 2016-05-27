@@ -5,6 +5,7 @@ m_requires(__name__, 'dispatcher')
 
 client_displays = {}
 
+
 def _on_configured():
     client_displays.clear()
     for display in default_displays:

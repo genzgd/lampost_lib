@@ -17,14 +17,11 @@ class Editor(MethodHandler):
         check_perm(self.player, self)
 
     def initialize(self, obj_class, imm_level='builder'):
-        try:
-            self.obj_class = get_dbo_class(obj_class)
-        except KeyError:
-            self.obj_class = obj_class
+        self.obj_class = get_dbo_class(getattr(obj_class, 'dbo_key_type', obj_class))
         self.imm_level = imm_level
-        self.dbo_key_type = obj_class.dbo_key_type
-        if hasattr(obj_class, 'dbo_children_types'):
-            self.children_types = obj_class.dbo_children_types
+        self.dbo_key_type = self.obj_class.dbo_key_type
+        if hasattr(self.obj_class, 'dbo_children_types'):
+            self.children_types = self.obj_class.dbo_children_types
 
     def list(self):
         return [self._edit_dto(obj) for obj in load_object_set(self.obj_class) if obj.can_read(self.player)]
@@ -105,9 +102,9 @@ class Editor(MethodHandler):
 
 class ChildList(SessionHandler):
     def initialize(self, obj_class):
-        self.obj_class = obj_class
-        self.dbo_key_type = obj_class.dbo_key_type
-        self.parent_type = obj_class.dbo_parent_type
+        self.obj_class = get_dbo_class(getattr(obj_class, 'dbo_key_type', obj_class))
+        self.dbo_key_type = self.obj_class.dbo_key_type
+        self.parent_type = self.obj_class.dbo_parent_type
 
     def main(self, parent_id):
         parent = load_object(parent_id, self.parent_type)
