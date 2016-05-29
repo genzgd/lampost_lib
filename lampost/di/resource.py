@@ -27,19 +27,19 @@ def register(name, service, export_methods=False):
             for attr, value in service.__class__.__dict__.items():
                 if not attr.startswith('_') and not _registry.get(attr) and hasattr(value, '__call__'):
                     _methods[name][attr] = value.__get__(service, service.__class__)
-    for cls in _consumer_map.get(name, []):
-        _inject(cls, name, service)
+    for cls, local_name in _consumer_map.get(name, []):
+        _inject(cls, name, service, local_name)
     if name in _consumer_map:
         del _consumer_map[name]
     return service
 
 
-def inject(cls, name):
+def inject(cls, name, local_name=None):
     service = _registry.get(name, None)
     if service:
-        _inject(cls, name, service)
+        _inject(cls, name, service, local_name)
         return
-    _consumer_map[name].append(cls)
+    _consumer_map[name].append((cls, local_name))
 
 
 def requires(*resources):
@@ -80,11 +80,18 @@ def _priority_sort(module):
         return 2000
 
 
-def _inject(cls, name, service):
+def _inject(cls, name, service, local_name):
+    if not local_name:
+        local_name = name
     if hasattr(service, 'factory'):
-        setattr(cls, name, service.factory(cls))
+        setattr(cls, local_name, service.factory(cls))
     else:
-        setattr(cls, name, service)
+        setattr(cls, local_name, service)
     for attr, value in _methods.get(name, {}).items():
         if not getattr(cls, attr, None):
             setattr(cls, attr, value)
+
+
+class Injected():
+    def __init__(self, name):
+        self._lp_injected = name
