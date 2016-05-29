@@ -14,7 +14,7 @@ from lampost.db.exceptions import ObjectExistsError, NonUniqueError
 m_requires(__name__, 'log', 'json_encode', 'json_decode')
 
 
-class RedisStore():
+class RedisStore:
     def __init__(self, db_host, db_port, db_num, db_pw):
         self.pool = ConnectionPool(max_connections=2, db=db_num, host=db_host, port=db_port, password=db_pw,
                                    decode_responses=True)

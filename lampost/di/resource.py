@@ -12,6 +12,8 @@ _registered_modules = []
 
 
 def register(name, service, export_methods=False):
+    if name in _registry:
+        raise KeyError("service {} already registered".format(name))
     _registry[name] = service
     if service not in _registered_modules:
         _registered_modules.append(service)
