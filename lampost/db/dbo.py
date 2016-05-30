@@ -1,12 +1,14 @@
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoAttrInit
-from lampost.meta.core import CoreMeta
 from lampost.util.classes import call_mro
 from lampost.db import dbofield
 from lampost.db.registry import set_dbo_class, get_dbo_class
 from lampost.db.dbofield import DBOField
 
-m_requires(__name__, 'log', 'perm', 'datastore')
+log = Injected('log')
+perm = Injected('perm')
+db = Injected('datastore')
+module_inject(__name__)
 
 
 class DBOFacet(AutoAttrInit):
@@ -28,12 +30,12 @@ class DBOFacet(AutoAttrInit):
             if hasattr(attr, 'hydrate'):
                 old_attr = cls.dbo_fields.get(name)
                 if old_attr == attr:
-                    warn("Overriding duplicate attr {} in class {}", name, cls.__name__)
+                    log.warn("Overriding duplicate attr {} in class {}", name, cls.__name__)
                 else:
                     if old_attr and old_attr.default == attr.default:
-                        warn("Unnecessary override of attr {} in class {}", name, cls.__name__)
+                        log.warn("Unnecessary override of attr {} in class {}", name, cls.__name__)
                     elif old_attr and old_attr.default:
-                        info("Overriding default value of attr{} in class {}", name, cls.__name__)
+                        log.nfo("Overriding default value of attr{} in class {}", name, cls.__name__)
                     cls.dbo_fields[name] = attr
 
 
@@ -64,7 +66,7 @@ class CoreDBO(DBOFacet):
                 except AttributeError:
                     pass
             if not dbo_value and dbo_field.required:
-                warn("Missing required field {} in object {}", field, dto)
+                log.warn("Missing required field {} in object {}", field, dto)
                 return None
         self._on_loaded()
         return self
@@ -137,7 +139,7 @@ class SystemDBO(DBOFacet):
         return True
 
     def can_write(self, immortal):
-        return is_supreme(immortal) or immortal.imm_level > getattr(self, 'imm_level', 0)
+        return perm.is_supreme(immortal) or immortal.imm_level > getattr(self, 'imm_level', 0)
 
 
 class OwnerDBO(DBOFacet):
@@ -150,24 +152,24 @@ class OwnerDBO(DBOFacet):
         try:
             return perm.immortals[self.owner_id] + 1
         except KeyError:
-            return perm_to_level('admin')
+            return perm.perm_to_level('admin')
 
     def can_read(self, immortal):
         return immortal.imm_level >= self.read_access
 
     def can_write(self, immortal):
-        if is_supreme(immortal) or immortal.dbo_id == self.owner_id:
+        if perm.is_supreme(immortal) or immortal.dbo_id == self.owner_id:
             return True
         if self.write_access:
             return immortal.imm_level >= self.write_access
         return immortal.imm_level >= self.imm_level
 
     def on_created(self):
-        info("{} created new object {}", self.owner_id, self.dbo_key)
-        add_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
+        log.info("{} created new object {}", self.owner_id, self.dbo_key)
+        db.add_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
 
     def on_deleted(self):
-        delete_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
+        db.delete_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
 
     def change_owner(self, new_owner=None):
         self.on_deleted()
@@ -220,7 +222,7 @@ class KeyDBO(CoreDBO):
         call_mro(self, 'on_deleted')
 
     def autosave(self):
-        save_object(self, autosave=True)
+        db.save_object(self, autosave=True)
 
     def to_db_value(self):
         dbofield.save_value_refs.current = []
@@ -238,7 +240,7 @@ class ParentDBO(KeyDBO, OwnerDBO):
 
     def dbo_child_keys(self, child_type):
         child_class = get_dbo_class(child_type)
-        return sorted(fetch_set_keys("{}_{}s:{}".format(self.dbo_key_type, child_type, self.dbo_id)),
+        return sorted(db.fetch_set_keys("{}_{}s:{}".format(self.dbo_key_type, child_type, self.dbo_id)),
                       key=child_class.dbo_key_sort)
 
 
@@ -255,7 +257,7 @@ class ChildDBO(KeyDBO):
 
     @property
     def parent_dbo(self):
-        return load_object(self.parent_id, self.dbo_parent_type)
+        return db.load_object(self.parent_id, self.dbo_parent_type)
 
     @property
     def dbo_set_key(self):
@@ -281,7 +283,7 @@ class Untyped():
     def hydrate(self, dto_repr):
         # This should never get called, as 'untyped' fields should always hold
         # templates or actual dbo_references with saved class_ids.
-        warn("Attempting to hydrate invalid dto {}", dto_repr)
+        log.warn("Attempting to hydrate invalid dto {}", dto_repr)
 
 
 set_dbo_class('untyped', Untyped)

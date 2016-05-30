@@ -1,10 +1,11 @@
 from collections import defaultdict
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.db.dbo import DBOField, ParentDBO, ChildDBO, CoreDBO
 
-
-m_requires(__name__, 'log', 'datastore')
+log = Injected('log')
+db = Injected('datastore')
+module_inject(__name__)
 
 
 def create(config_id, raw_configs, set_defaults=False):
@@ -17,7 +18,7 @@ def create(config_id, raw_configs, set_defaults=False):
         except KeyError:
             section_dto = section_dto or {}
             section_dto['dbo_id'] = '{}:{}'.format(config_id, section_name)
-            section = create_object(ConfigSection, section_dto)
+            section = db.create_object(ConfigSection, section_dto)
             sections[section_name] = section
             return section
 
@@ -29,27 +30,27 @@ def create(config_id, raw_configs, set_defaults=False):
             section = init_section(section_name)
             setting_map = {setting.name: setting for setting in section.settings}
             for raw_setting in settings:
-                new_setting = Setting().hydrate(raw_setting)
+                setting = Setting().hydrate(raw_setting)
                 if set_defaults:
-                    new_setting.default = new_setting.value
+                    setting.default = setting.value
                 try:
-                    existing = setting_map[new_setting.name]
-                    warn("Setting {} with value {} overwritten by {}", setting.name, existing.value, setting.value)
+                    existing = setting_map[setting.name]
+                    log.warn("Setting {} with value {} overwritten by {}", setting.name, existing.value, setting.value)
                 except KeyError:
                     pass
-                setting_map[new_setting.name] = new_setting
-                all_values[new_setting.name].add(section_name)
+                setting_map[setting.name] = setting
+                all_values[setting.name].add(section_name)
             section.settings = setting_map.values()
-            save_object(section)
+            db.save_object(section)
 
     for rc in raw_configs:
         add_raw(rc)
 
     for setting_name, section_names in all_values.items():
         if len(section_names) > 1:
-            warn("Setting name {} found in multiple sections: {}", setting_name, ' '.join(section_names))
+            log.warn("Setting name {} found in multiple sections: {}", setting_name, ' '.join(section_names))
 
-    return create_object(Config, {'dbo_id': config_id})
+    return db.create_object(Config, {'dbo_id': config_id})
 
 
 class Config(ParentDBO):
@@ -59,21 +60,21 @@ class Config(ParentDBO):
     dbo_children_types = ['c_sect']
 
     def update_value(self, section, name, value):
-        section = load_object('c_sect:{}:{}'.format(self.dbo_id, section))
+        section = db.load_object('c_sect:{}:{}'.format(self.dbo_id, section))
         if section:
             self.section_values['{}:{}'.format(section, name)] = value
             for setting in section.settings:
                 if setting.name == name:
                     setting.value = value
-                    save_object(section)
+                    db.save_object(section)
                     return
-        error("No setting found for {}:{}".format(section, name))
+        log.error("No setting found for {}:{}".format(section, name))
 
     def on_loaded(self):
         self.section_values = {}
         self.exports = {}
         for child_key in self.dbo_child_keys('c_sect'):
-            section = load_object(child_key, ConfigSection)
+            section = db.load_object(child_key, ConfigSection)
             if section:
                 for setting in section.settings:
                     self.section_values['{}:{}'.format(section.child_id, setting.name)] = setting.value

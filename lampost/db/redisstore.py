@@ -6,12 +6,14 @@ from weakref import WeakValueDictionary
 from redis import ConnectionPool
 from redis.client import StrictRedis
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.db.registry import get_dbo_class, get_mixed_type
 from lampost.db.exceptions import ObjectExistsError, NonUniqueError
 
-
-m_requires(__name__, 'log', 'json_encode', 'json_decode')
+log = Injected('log')
+json_encode = Injected('json_encode')
+json_decode = Injected('json_decode')
+module_inject(__name__)
 
 
 class RedisStore:
@@ -31,7 +33,7 @@ class RedisStore:
         except KeyError:
             dbo_id, dbo_dict = dbo_dict, {}
         if dbo_id is None or dbo_id == '':
-            warn("create_object called with empty dbo_id")
+            log.warn("create_object called with empty dbo_id")
             return
         dbo_id = str(dbo_id).lower()
         if self.object_exists(dbo_class.dbo_key_type, dbo_id):
@@ -55,7 +57,7 @@ class RedisStore:
         self.redis.set(dbo.dbo_key, json_encode(save_root))
         if new_refs:
             self._set_new_refs(dbo, new_refs)
-        debug("db object {} {}saved", dbo.dbo_key, "auto" if autosave else "")
+        log.debug("db object {} {}saved", dbo.dbo_key, "auto" if autosave else "")
         self._object_map[dbo.dbo_key] = dbo
         return dbo
 
@@ -81,7 +83,7 @@ class RedisStore:
                 dbo_key, dbo_id = ':'.join([key_type, dbo_key]), dbo_key
             except TypeError:
                 if not silent:
-                    exception("Invalid dbo_key passed to load_object", stack_info=True)
+                    log.exception("Invalid dbo_key passed to load_object", stack_info=True)
                 return
         else:
             key_type, _, dbo_id = dbo_key.partition(':')
@@ -91,7 +93,7 @@ class RedisStore:
         json_str = self.redis.get(dbo_key)
         if not json_str:
             if not silent:
-                warn("Failed to find {} in database", dbo_key)
+                log.warn("Failed to find {} in database", dbo_key)
             return
         return self.load_from_json(json_str, key_type, dbo_id)
 
@@ -127,7 +129,7 @@ class RedisStore:
                 if obj:
                     results.add(obj)
                 continue
-            warn("Removing missing object from set {}", set_key)
+            log.warn("Removing missing object from set {}", set_key)
             self.delete_set_key(set_key, dbo_id)
         return results
 
@@ -156,7 +158,7 @@ class RedisStore:
             ix_value = getattr(dbo, ix_name, None)
             if ix_value is not None and ix_value != '':
                 self.delete_index('ix:{}:{}'.format(dbo.dbo_key_type, ix_name), ix_value)
-        debug("object deleted: {}", key)
+        log.debug("object deleted: {}", key)
         self.evict_object(dbo)
 
     def reload_object(self, dbo_key):
@@ -164,7 +166,7 @@ class RedisStore:
         if dbo:
             json_str = self.redis.get(dbo_key)
             if not json_str:
-                warn("Failed to find {} in database for reload", dbo_key)
+                log.warn("Failed to find {} in database for reload", dbo_key)
                 return None
             return self.update_object(dbo, json_decode(json_str))
         return self.load_object(dbo_key)

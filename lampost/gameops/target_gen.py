@@ -1,6 +1,7 @@
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 
-m_requires(__name__, 'session_manager')
+sm = Injected('session_manager')
+module_inject(__name__)
 
 
 def recursive_targets(target_list, target_key):
@@ -66,7 +67,7 @@ defaults = [self, equip, inven, env, feature, env_living, env_items]
 
 
 def logged_in(target_key, *_):
-    session = session_manager.player_session(" ".join(target_key))
+    session = sm.player_session(" ".join(target_key))
     if session:
         yield session.player
 logged_in.absent_msg = "That player is not logged in."

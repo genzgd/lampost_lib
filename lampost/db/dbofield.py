@@ -1,10 +1,12 @@
 from threading import local
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField, TemplateField
 from lampost.db.registry import get_dbo_class
 
-m_requires(__name__, 'log', 'datastore')
+log = Injected('log')
+db = Injected('datastore')
+module_inject(__name__)
 
 # This is used to collect child references while calculating save values, rather than attempting to pass this
 # collection recursively
@@ -61,7 +63,7 @@ class DBOTField():
         return getattr(instance.template, self.field)
 
     def __set__(self, instance, value):
-        error("Illegally setting value {} of DBOTField {}", value, self.field, stack_info=True)
+        log.error("Illegally setting value {} of DBOTField {}", value, self.field, stack_info=True)
 
     def meta_init(self, field):
         self.field = field
@@ -202,7 +204,7 @@ def to_dbo_key(dbo, class_id):
 
 
 def load_keyed(class_id, dbo_owner, dbo_id):
-    return load_object(dbo_id, class_id if class_id != "untyped" else None)
+    return db.load_object(dbo_id, class_id if class_id != "untyped" else None)
 
 
 def save_keyed(class_id, dbo_owner, dto_repr):
@@ -231,27 +233,28 @@ def load_any(class_id, dbo_owner, dto_repr):
 
     dbo_class = get_dbo_class(class_id)
     if not dbo_class:
-        return error('Unable to load reference for {}', class_id)
+        log.error('Unable to load reference for {}', class_id)
+        return None
 
     # If this class has a key_type, it should always be a reference and we should load it from the database
     # The dto_representation in this case should always be a dbo_id
     if hasattr(dbo_class, 'dbo_key_type'):
-        return load_object(dbo_ref_id, dbo_class)
+        return db.load_object(dbo_ref_id, dbo_class)
 
     # If we still have a dbo_ref_id, this must be part of an untyped collection, so the dbo_ref_id includes
     # both the class name and dbo_id and we should be able to load it
     if dbo_ref_id:
-        return load_object(dbo_ref_id)
+        return db.load_object(dbo_ref_id)
 
     # If this is a template, it should have a template key, so we load the template from the database using
     # the full key, then hydrate any non-template fields from the dictionary
     template_key = dto_repr.get('tk')
     if template_key:
-        template = load_object(template_key)
+        template = db.load_object(template_key)
         if template:
             return template.create_instance(dbo_owner).hydrate(dto_repr)
         else:
-            warn("Missing template for template_key {}", template_key)
+            log.warn("Missing template for template_key {}", template_key)
             return
 
     # Finally, it's not a template and it is not a reference to an independent DB object, it must be a pure child

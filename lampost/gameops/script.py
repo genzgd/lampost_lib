@@ -2,18 +2,20 @@ import bisect
 import inspect
 from collections import defaultdict
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
 from lampost.db.dbo import ChildDBO, DBOFacet
 from lampost.db.dbofield import DBOField
 
-m_requires(__name__, 'log', 'datastore', 'dispatcher')
+log = Injected('log')
+ev = Injected('dispatcher')
+module_inject(__name__)
 
 script_cache = {}
 
 
 def _post_init():
-    register('maintenance', lambda: script_cache.clear())
+    ev.register('maintenance', lambda: script_cache.clear())
 
 
 def create_chain(funcs):
@@ -99,7 +101,7 @@ class ShadowScript(ChildDBO):
         if self.approved:
             self.code, _ = compile_script(self.script_hash, self.text, self.dbo_id)
         else:
-            info("Loading unapproved script {}", self.dbo_id)
+            log.info("Loading unapproved script {}", self.dbo_id)
 
 
 class ShadowRef(ChildDBO):

@@ -1,11 +1,13 @@
 import itertools
 
 from lampost.gameops import target_gen
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.gameops.action import find_actions
 from lampost.util.lputil import find_extra, ClientError
 
-m_requires(__name__, 'log', 'mud_actions')
+log = Injected('log')
+mud_actions = Injected('mud_actions')
+module_inject(__name__)
 
 MISSING_VERB = "Unrecognized command '{verb}'.  Perhaps you should try 'help'?"
 EXTRA_WORDS = "'{extra}' does not make sense with '{verb}'."
@@ -87,7 +89,7 @@ def capture_index(target_key):
     return 0, target_key
 
 
-class Parse():
+class Parse:
     def __init__(self, entity, command):
         matches = entity_actions(entity, command)
         matches = entity.filter_actions(matches)

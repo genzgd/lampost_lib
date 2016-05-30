@@ -1,9 +1,13 @@
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.db.registry import get_dbo_class
 from lampost.db.exceptions import DataError
 from lampost.server.handlers import MethodHandler, SessionHandler
 
-m_requires(__name__, 'log', 'datastore', 'dispatcher', 'perm', 'edit_notify_service')
+log = Injected('log')
+db = Injected('datastore')
+perm = Injected('perm')
+edit_update = Injected('edit_update_service')
+module_inject(__name__)
 
 obj_defaults = {}
 
@@ -14,7 +18,7 @@ class Editor(MethodHandler):
 
     def prepare(self):
         super().prepare()
-        check_perm(self.player, self)
+        perm.check_perm(self.player, self)
 
     def initialize(self, obj_class, imm_level='builder'):
         self.obj_class = get_dbo_class(getattr(obj_class, 'dbo_key_type', obj_class))
@@ -24,45 +28,45 @@ class Editor(MethodHandler):
             self.children_types = self.obj_class.dbo_children_types
 
     def list(self):
-        return [self._edit_dto(obj) for obj in load_object_set(self.obj_class) if obj.can_read(self.player)]
+        return [self._edit_dto(obj) for obj in db.load_object_set(self.obj_class) if obj.can_read(self.player)]
 
     def create(self):
         self.raw['owner_id'] = self.session.player.dbo_id
         self._pre_create()
-        new_obj = create_object(self.obj_class, self.raw)
+        new_obj = db.create_object(self.obj_class, self.raw)
         self._post_create(new_obj)
-        return publish_edit('create', new_obj, self.session)
+        return edit_update.publish_edit('create', new_obj, self.session)
 
     def delete_obj(self):
-        del_obj = load_object(self.raw['dbo_id'], self.obj_class)
+        del_obj = db.load_object(self.raw['dbo_id'], self.obj_class)
         if not del_obj:
             raise DataError('Gone: Object with key {} does not exist'.format(self.raw['dbo_id']))
-        check_perm(self.player, del_obj)
+        perm.check_perm(self.player, del_obj)
         self._pre_delete(del_obj)
-        holder_keys = fetch_set_keys('{}:holders'.format(del_obj.dbo_key))
+        holder_keys = db.fetch_set_keys('{}:holders'.format(del_obj.dbo_key))
         for dbo_key in holder_keys:
-            cached_holder = load_cached(dbo_key)
+            cached_holder = db.load_cached(dbo_key)
             if cached_holder:
-                save_object(cached_holder)
-        delete_object(del_obj)
+                db.save_object(cached_holder)
+        db.delete_object(del_obj)
         for dbo_key in holder_keys:
-            reloaded = reload_object(dbo_key)
+            reloaded = db.reload_object(dbo_key)
             if reloaded:
-                publish_edit('update', reloaded, self.session, True)
+                edit_update.publish_edit('update', reloaded, self.session, True)
         self._post_delete(del_obj)
-        publish_edit('delete', del_obj, self.session)
+        edit_update.publish_edit('delete', del_obj, self.session)
 
     def update(self):
-        existing_obj = load_object(self.raw['dbo_id'], self.obj_class)
+        existing_obj = db.load_object(self.raw['dbo_id'], self.obj_class)
         if not existing_obj:
             raise DataError("GONE:  Object with key {} no longer exists.".format(self.raw['dbo.id']))
-        check_perm(self.player, existing_obj)
+        perm.check_perm(self.player, existing_obj)
         self._pre_update(existing_obj)
         if hasattr(existing_obj, 'change_owner') and self.raw['owner_id'] != existing_obj.owner_id:
             existing_obj.change_owner(self.raw['owner_id'])
-        update_object(existing_obj, self.raw)
+        db.update_object(existing_obj, self.raw)
         self._post_update(existing_obj)
-        return publish_edit('update', existing_obj, self.session)
+        return edit_update.publish_edit('update', existing_obj, self.session)
 
     def metadata(self):
         new_object_cls = get_dbo_class(self.dbo_key_type)
@@ -70,7 +74,7 @@ class Editor(MethodHandler):
                 'new_object': new_object_cls.new_dto()}
 
     def test_delete(self):
-        return list(fetch_set_keys('{}:{}:holders'.format(self.dbo_key_type, self.raw['dbo_id'])))
+        return list(db.fetch_set_keys('{}:{}:holders'.format(self.dbo_key_type, self.raw['dbo_id'])))
 
     def _edit_dto(self, dbo):
         dto = dbo.edit_dto
@@ -107,7 +111,7 @@ class ChildList(SessionHandler):
         self.parent_type = self.obj_class.dbo_parent_type
 
     def main(self, parent_id):
-        parent = load_object(parent_id, self.parent_type)
+        parent = db.load_object(parent_id, self.parent_type)
         if not parent:
             self.send_error(404)
         if not parent.can_read(self.player):
@@ -115,7 +119,7 @@ class ChildList(SessionHandler):
         set_key = '{}_{}s:{}'.format(self.parent_type, self.dbo_key_type, parent_id)
         can_write = parent.can_write(self.player)
         child_list = []
-        for child in load_object_set(self.obj_class, set_key):
+        for child in db.load_object_set(self.obj_class, set_key):
             child_dto = child.edit_dto
             child_dto['can_write'] = can_write
             child_list.append(child_dto)
@@ -129,6 +133,5 @@ class ChildrenEditor(Editor):
 
     def _pre_create(self):
         parent_id = self.raw['dbo_id'].split(':')[0]
-        parent = load_object(parent_id, self.parent_type)
-        check_perm(self.player, parent)
-
+        parent = db.load_object(parent_id, self.parent_type)
+        perm.check_perm(self.player, parent)

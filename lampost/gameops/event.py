@@ -3,11 +3,12 @@ from random import randint
 
 from tornado.ioloop import PeriodicCallback
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.di.config import m_configured
 
-
-m_requires(__name__, 'log', 'datastore')
+log = Injected('log')
+db = Injected('datastore')
+module_inject(__name__)
 
 _registrations = defaultdict(set)
 _pulse_map = defaultdict(set)
@@ -72,7 +73,7 @@ def dispatch(event_type, *args, **kwargs):
         try:
             registration.callback(*args, **kwargs)
         except Exception:
-            exception("Dispatch Error")
+            log.exception("Dispatch Error")
 
 
 def detach_events(owner):
@@ -89,7 +90,7 @@ def _pulse():
             try:
                 reg.callback()
             except Exception:
-                exception('Pulse Error')
+                log.exception('Pulse Error')
             if reg.repeat:
                 _add_pulse(_pulse_count, reg)
     del _pulse_map[_pulse_count]
@@ -108,8 +109,8 @@ def _add_pulse(start, event):
 
 def _post_init():
     global _pulse_count
-    _pulse_count = load_raw('event_pulse', 0)
-    register_p(lambda: save_raw('event_pulse', _pulse_count), 100)
+    _pulse_count = db.load_raw('event_pulse', 0)
+    register_p(lambda: db.save_raw('event_pulse', _pulse_count), 100)
 
 
 def _on_configured():

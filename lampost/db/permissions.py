@@ -1,8 +1,9 @@
 from lampost.di.config import m_configured
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.util.lputil import PermError
 
-m_requires(__name__, 'datastore')
+db = Injected('datastore')
+module_inject(__name__)
 
 
 def _on_configured():
@@ -14,7 +15,7 @@ m_configured(__name__, 'imm_levels', 'system_accounts', 'system_level')
 
 def _post_init():
     global immortals
-    immortals = get_all_hash('immortals')
+    immortals = db.get_all_hash('immortals')
     immortals.update({account: system_level for account in system_accounts})
 
 
@@ -24,10 +25,10 @@ def perm_name(num_level):
 
 def update_immortal_list(player):
     if player.imm_level:
-        set_db_hash('immortals', player.dbo_id, player.imm_level)
+        db.set_db_hash('immortals', player.dbo_id, player.imm_level)
         immortals[player.dbo_id] = player.imm_level
     else:
-        delete_index('immortals', player.dbo_id)
+        db.delete_index('immortals', player.dbo_id)
         try:
             del immortals[player.dbo_id]
         except KeyError:

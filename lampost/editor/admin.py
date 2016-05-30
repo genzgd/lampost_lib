@@ -1,9 +1,10 @@
 import inspect
 
 from lampost.server.handlers import MethodHandler
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 
-m_requires(__name__, 'perm')
+perm = Injected('perm')
+module_inject(__name__)
 
 admin_ops = {}
 
@@ -23,7 +24,7 @@ def admin_op(func):
 class AdminHandler(MethodHandler):
 
     def operations(self):
-        check_perm(self.player,  'supreme')
+        perm.check_perm(self.player, 'supreme')
         return [op['dto'] for op in admin_ops.values()]
 
     def execute(self):

@@ -2,13 +2,14 @@ import inspect
 
 import itertools
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
 from lampost.gameops import target_gen
 from lampost.util.lputil import ClientError
 
-m_requires(__name__, 'log')
+log = Injected('log')
+module_inject(__name__)
 
 
 def convert_verbs(verbs):
@@ -91,7 +92,7 @@ def remove_action(action_set, action):
             if not verb_set:
                 del action_set[verb]
         else:
-            debug("Trying to remove non-existent action {}", verb)
+            log.debug("Trying to remove non-existent action {}", verb)
     for sub_action in getattr(action, 'action_providers', ()):
         remove_action(action_set, sub_action)
 

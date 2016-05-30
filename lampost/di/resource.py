@@ -58,13 +58,14 @@ def m_requires(module_name, *resources):
         _registered_modules.append(module)
 
 
-def module_inject(module_name):
+def module_inject(module_name, priority=1000):
     module = sys.modules[module_name]
     for name, value in module.__dict__.copy().items():
         if hasattr(value, '_lp_injected'):
             inject(module, value._lp_injected, name)
             _pending_injects.discard(value)
     if module not in _registered_modules:
+        module._init_priority = getattr(module, '_init_priority', priority)
         _registered_modules.append(module)
 
 
@@ -73,8 +74,8 @@ def get_resource(name):
 
 
 def context_post_init():
-    for inject in _pending_injects:
-        raise TypeError("Inject {} never triggered.  Did you miss a module_inject?".format(inject._lp_injected))
+    for p_inject in _pending_injects:
+        raise TypeError("Inject {} never triggered.  Did you miss a module_inject?".format(p_inject._lp_injected))
     for name, consumers in _consumer_map.items():
         for consumer in consumers:
             raise TypeError("{} dependency not found for consumer {}", name, getattr(consumer, '__name__', consumer))
@@ -106,7 +107,11 @@ def _inject(cls, name, service, local_name):
 
 _pending_injects = set()
 
-class Injected():
+
+class Injected:
     def __init__(self, name):
         self._lp_injected = name
         _pending_injects.add(self)
+
+    def __call__(self, *args, **kwargs):
+        log.error("Injected object {} called directly before injection".format(self._lp_injected))
