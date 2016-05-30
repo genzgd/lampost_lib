@@ -1,6 +1,10 @@
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 
-m_requires(__name__, 'log', 'session_manager', 'dispatcher', 'perm')
+log = Injected('log')
+sm = Injected('session_manager')
+ev = Injected('dispatcher')
+perm = Injected('perm')
+module_inject(__name__)
 
 
 class ClientService():
@@ -8,7 +12,7 @@ class ClientService():
         self.sessions = set()
 
     def _post_init(self):
-        register('session_disconnect', self.unregister)
+        ev.register('session_disconnect', self.unregister)
 
     def register(self, session, data=None):
         self.sessions.add(session)
@@ -28,11 +32,11 @@ class PlayerListService(ClientService):
 
     def _post_init(self):
         super()._post_init()
-        register('player_list', self._process_list)
+        ev.register('player_list', self._process_list)
 
     def register(self, session, data):
         super().register(session, data)
-        session.append({'player_list': session_manager.player_info_map})
+        session.append({'player_list': sm.player_info_map})
 
     def _process_list(self, player_list):
         self._session_dispatch({'player_list': player_list})
@@ -42,7 +46,7 @@ class AnyLoginService(ClientService):
 
     def _post_init(self):
         super()._post_init()
-        register('player_attach', self._process_login)
+        ev.register('player_attach', self._process_login)
 
     def _process_login(self, player):
         self._session_dispatch({'any_login': {'name': player.name}})
@@ -52,13 +56,13 @@ class EditUpdateService(ClientService):
 
     def _post_init(self):
         super()._post_init()
-        register('publish_edit', self.publish_edit)
+        ev.register('publish_edit', self.publish_edit)
 
     def publish_edit(self, edit_type, edit_obj, source_session=None, local=False):
         edit_dto = edit_obj.edit_dto
         if source_session:
             local_dto = edit_dto.copy()
-            local_dto['can_write'] = has_perm(source_session.player, edit_obj)
+            local_dto['can_write'] = perm.has_perm(source_session.player, edit_obj)
         else:
             local_dto = None
         edit_update  = {'edit_update': {'edit_type': edit_type}}
@@ -73,7 +77,7 @@ class EditUpdateService(ClientService):
             else:
                 event = edit_update.copy()
                 event_dto = edit_dto.copy()
-                event_dto['can_write'] = has_perm(session.player, edit_obj)
+                event_dto['can_write'] = perm.has_perm(session.player, edit_obj)
                 event['edit_update']['model'] = event_dto
                 session.append(event)
 

@@ -1,7 +1,8 @@
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 from lampost.di.config import m_configured
 
-m_requires(__name__, 'dispatcher')
+ev = Injected('dispatcher')
+module_inject(__name__)
 
 client_displays = {}
 
@@ -15,7 +16,7 @@ m_configured(__name__, 'default_displays')
 
 
 def _post_init():
-    register('session_connect', set_displays)
+    ev.register('session_connect', set_displays)
 
 
 def set_displays(session):

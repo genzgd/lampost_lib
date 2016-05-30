@@ -1,10 +1,10 @@
 from smtplib import SMTPHeloError, SMTP, SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError
 from threading import Thread
 
-from lampost.di.resource import requires, m_requires
+from lampost.di.resource import Injected, module_inject
 
-
-m_requires(__name__, 'log')
+log = Injected('log')
+module_inject(__name__)
 
 
 class EmailSender():
@@ -12,7 +12,7 @@ class EmailSender():
         try:
             info_file = open('data/email_info')
         except IOError:
-            warn("No email info available")
+            log.warn("No email info available")
             self.available = False
             return
         email_info = info_file.readlines()
@@ -30,14 +30,15 @@ class EmailSender():
             if user.email:
                 wrappers.append(EmailWrapper(user.email, "\From: {}\nTo: {}\nSubject:{}\n\n{}".format(self.email_name, user.user_name, subject, text)))
             else:
-                warn("User {} has no email address", user.user_name)
+                log.warn("User {} has no email address", user.user_name)
         MessageSender(wrappers).start()
         return "Email Sent"
 
 
-@requires('email_sender')
-class MessageSender(Thread):
+email_sender = EmailSender()
 
+
+class MessageSender(Thread):
     def __init__(self, wrappers):
         super().__init__()
         self.wrappers = wrappers
@@ -52,13 +53,13 @@ class MessageSender(Thread):
         try:
             self.server.sendmail(self.email_sender.email_address, addresses, message)
         except SMTPHeloError:
-            exception("Helo error sending email")
+            log.exception("Helo error sending email")
         except SMTPRecipientsRefused:
-            warn("Failed to send email to {}".format(addresses))
+            log.warn("Failed to send email to {}".format(addresses))
         except SMTPSenderRefused:
-            warn("Sender refused for email")
+            log.warn("Sender refused for email")
         except SMTPDataError as exp:
-            exception("Unexpected Data error sending email")
+            log.exception("Unexpected Data error sending email")
 
     def _open_server(self):
         self.server = SMTP("smtp.gmail.com", 587)

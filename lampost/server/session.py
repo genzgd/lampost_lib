@@ -3,11 +3,15 @@ from datetime import datetime, timedelta
 from os import urandom
 from base64 import b64encode
 
-from lampost.di.resource import m_requires, requires
+from lampost.di.resource import Injected, module_inject
 from lampost.di.config import m_configured
 from lampost.util.lputil import ClientError
 
-m_requires(__name__, 'log', 'dispatcher', 'user_manager')
+log = Injected('log')
+ev = Injected('dispatcher')
+um = Injected('user_manager')
+json_encode = Injected('json_encode')
+module_inject(__name__)
 
 m_configured(__name__, 'refresh_link_interval', 'broadcast_interval', 'link_dead_prune', 'link_dead_interval',
              'link_idle_refresh')
@@ -20,12 +24,12 @@ class SessionManager():
         self.player_session_map = {}
 
     def _post_init(self):
-        register_p(self._refresh_link_status, seconds=refresh_link_interval)
-        register_p(self._broadcast_status, seconds=broadcast_interval)
+        ev.register_p(self._refresh_link_status, seconds=refresh_link_interval)
+        ev.register_p(self._broadcast_status, seconds=broadcast_interval)
         self.link_dead_prune = timedelta(seconds=link_dead_prune)
         self.link_dead_interval = timedelta(seconds=link_dead_interval)
         self.link_idle_refresh = timedelta(seconds=link_idle_refresh)
-        register('player_logout', self._player_logout)
+        ev.register('player_logout', self._player_logout)
 
     def get_session(self, session_id):
         return self.session_map.get(session_id)
@@ -38,7 +42,7 @@ class SessionManager():
         session = GameSession()
         self.session_map[session_id] = session
         session.append({'connect': session_id})
-        dispatch('session_connect', session)
+        ev.dispatch('session_connect', session)
         return session
 
     def start_edit_session(self):
@@ -54,10 +58,10 @@ class SessionManager():
         stale_output = session.pull_output()
         client_data = {}
         session.append({'connect': session_id})
-        dispatch('session_connect', session)
+        ev.dispatch('session_connect', session)
         session.append({'login': client_data})
-        dispatch('user_connect', session.user, client_data)
-        dispatch('player_connect', session.player, client_data)
+        ev.dispatch('user_connect', session.user, client_data)
+        ev.dispatch('player_connect', session.player, client_data)
         session.append_list(stale_output)
         session.player.display_line("-- Reconnecting Session --", 'system')
         session.player.parse("look")
@@ -66,7 +70,7 @@ class SessionManager():
     def login(self, session, user_name, password):
         user_name = user_name.lower()
         try:
-            user = user_manager.validate_user(user_name, password)
+            user = um.validate_user(user_name, password)
         except ClientError as ce:
             session.append({'login_failure': ce.client_message})
             return
@@ -77,7 +81,7 @@ class SessionManager():
             self.start_player(session, user_name)
         else:
             client_data = {}
-            dispatch('user_connect', user, client_data)
+            ev.dispatch('user_connect', user, client_data)
             session.append({'user_login': client_data})
 
     def start_player(self, session, player_id):
@@ -90,15 +94,15 @@ class SessionManager():
             self._connect_session(session, player, '-- Existing Session Logged Out --')
             player.parse('look')
         else:
-            player = user_manager.find_player(player_id)
+            player = um.find_player(player_id)
             if not player:
                 session.append('logout')
                 return
             self._connect_session(session, player, 'Welcome {}'.format(player.name))
-            user_manager.login_player(player)
+            um.login_player(player)
         client_data = {}
-        dispatch('user_connect', session.user, client_data)
-        dispatch('player_connect', player, client_data)
+        ev.dispatch('user_connect', session.user, client_data)
+        ev.dispatch('player_connect', player, client_data)
         session.append({'login': client_data})
         self.player_info_map[player.dbo_id] = session.player_info(session.activity_time)
         self._broadcast_status()
@@ -116,7 +120,7 @@ class SessionManager():
         if not player:
             return
         player.last_logout = int(time.time())
-        user_manager.logout_player(player)
+        um.logout_player(player)
         session.player = None
         del self.player_info_map[player.dbo_id]
         del self.player_session_map[player.dbo_id]
@@ -147,10 +151,9 @@ class SessionManager():
         for session in self.player_session_map.values():
             if session.player:
                 self.player_info_map[session.player.dbo_id] = session.player_info(now)
-        dispatch('player_list', self.player_info_map)
+        ev.dispatch('player_list', self.player_info_map)
 
 
-@requires('json_encode')
 class ClientSession():
     def __init__(self):
         self._pulse_reg = None
@@ -176,7 +179,7 @@ class ClientSession():
         if data:
             self._output.append(data)
         if not self._pulse_reg:
-            self._pulse_reg = register("pulse", self._push_output)
+            self._pulse_reg = ev.register("pulse", self._push_output)
 
     def append_list(self, data):
         self._output += data
@@ -186,25 +189,25 @@ class ClientSession():
         self.activity_time = datetime.now()
         output = self._output
         if self._pulse_reg:
-            unregister(self._pulse_reg)
+            ev.unregister(self._pulse_reg)
             self._pulse_reg = None
         self._reset()
         return output
 
     def link_failed(self, reason):
-        debug("Link failed {}", reason)
+        log.debug("Link failed {}", reason)
         self.ld_time = datetime.now()
         self.request = None
 
     def disconnect(self):
-        dispatch('session_disconnect', self)
-        detach_events(self)
+        ev.dispatch('session_disconnect', self)
+        ev.detach_events(self)
 
     def _push_output(self):
         if self.request:
             self._output.append({'link_status': "good"})
             self._push(self._output)
-            unregister(self._pulse_reg)
+            ev.unregister(self._pulse_reg)
             self._pulse_reg = None
             self._reset()
 
@@ -214,7 +217,7 @@ class ClientSession():
         self._status = None
 
     def _push(self, output):
-        self.request.write(self.json_encode(output))
+        self.request.write(json_encode(output))
         self.request.finish()
         self.request = None
 
@@ -258,5 +261,5 @@ class GameSession(ClientSession):
             self.append({'status': status})
 
     def disconnect(self):
-        dispatch('player_logout', self)
+        ev.dispatch('player_logout', self)
         super().disconnect()

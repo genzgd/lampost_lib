@@ -1,9 +1,10 @@
 from tornado.httpserver import HTTPServer
 from tornado.web import Application, URLSpec
 
-from lampost.di.resource import m_requires
+from lampost.di.resource import Injected, module_inject
 
-m_requires(__name__, 'log')
+log = Injected('log')
+module_inject(__name__)
 
 _handlers = []
 
@@ -22,12 +23,12 @@ def add_routes(routes):
 
 def start_service(port, interface):
     application = Application(_handlers, log_function=_app_log)
-    info("Starting web server on port {}", port)
+    log.info("Starting web server on port {}", port)
     http_server = HTTPServer(application)
     http_server.listen(port, interface)
 
 
 def _app_log(handler):
-    if debug_enabled():
-        debug('{} {} {}', handler.get_status(), handler._request_summary(),
+    if log.debug_enabled():
+        log.debug('{} {} {}', handler.get_status(), handler._request_summary(),
               1000.0 * handler.request.request_time())

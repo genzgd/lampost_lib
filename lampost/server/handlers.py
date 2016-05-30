@@ -2,10 +2,15 @@ import html
 
 from tornado.web import RequestHandler, asynchronous
 
-from lampost.di.resource import m_requires, get_resource
+from lampost.di.resource import Injected, get_resource, module_inject
 from lampost.util.lputil import ClientError, Blank
 
-m_requires(__name__, 'log', 'perm', 'session_manager', 'json_decode', 'json_encode')
+log = Injected('log')
+perm = Injected('perm')
+sm = Injected('session_manager')
+json_encode = Injected('json_encode')
+json_decode = Injected('json_decode')
+module_inject(__name__)
 
 
 class LinkError(Exception):
@@ -23,7 +28,7 @@ class SessionHandler(RequestHandler):
             self.write(e.client_message)
         else:
             self.set_status(500)
-            exception("Handler Exception", e)
+            log.exception("Handler Exception", e)
         self.finish()
 
     def _content(self):
@@ -38,7 +43,7 @@ class SessionHandler(RequestHandler):
         self.finish()
 
     def prepare(self):
-        self.session = session_manager.get_session(self.request.headers.get('X-Lampost-Session'))
+        self.session = sm.get_session(self.request.headers.get('X-Lampost-Session'))
         if not self.session:
             raise LinkError('session_not_found')
         self.player = self.session.player
@@ -70,9 +75,9 @@ class GameConnect(RequestHandler):
         session_id = self.request.headers.get('X-Lampost-Session')
         if session_id:
             content = json_decode(self.request.body.decode())
-            session = session_manager.reconnect_session(session_id, content['player_id'])
+            session = sm.reconnect_session(session_id, content['player_id'])
         else:
-            session = session_manager.start_session()
+            session = sm.start_session()
         self.set_header("Content-Type", "application/json; charset=UTF-8")
         self.write(json_encode(session.pull_output()))
 
@@ -81,18 +86,18 @@ class Login(SessionHandler):
     def main(self):
         content = self._content()
         if self.session.user and getattr(content, 'player_id', None):
-            session_manager.start_player(self.session, content.player_id)
+            sm.start_player(self.session, content.player_id)
         elif hasattr(content, 'user_id') and hasattr(content, 'password'):
-            session_manager.login(self.session, content.user_id, content.password)
+            sm.login(self.session, content.user_id, content.password)
         else:
-            session.append({'login_failure': 'Browser did not submit credentials, please retype'})
+            self.session.append({'login_failure': 'Browser did not submit credentials, please retype'})
 
 
 class Link(RequestHandler):
     @asynchronous
     def post(self):
         self.set_header('Content-Type', 'application/json')
-        self.session = session_manager.get_session(self.request.headers.get('X-Lampost-Session'))
+        self.session = sm.get_session(self.request.headers.get('X-Lampost-Session'))
         if self.session:
             self.session.attach(self)
         else:
@@ -118,7 +123,7 @@ class Register(SessionHandler):
         if client_service:
             client_service.register(self.session, self.raw.get('data', None))
         else:
-            warn("Failed to register for service {}", self.raw['service_id'])
+            log.warn("Failed to register for service {}", self.raw['service_id'])
 
 
 class Unregister(SessionHandler):
@@ -128,5 +133,5 @@ class Unregister(SessionHandler):
 
 class RemoteLog(RequestHandler):
     def post(self):
-        warn(self.request.body, 'Remote')
+        log.warn(self.request.body, 'Remote')
         self.set_status(204)

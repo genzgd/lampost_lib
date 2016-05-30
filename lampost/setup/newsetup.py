@@ -1,19 +1,18 @@
 from importlib import import_module
 
+import logging
+
 from lampost.di import resource, config
 from lampost.db import redisstore, permissions, dbconfig
 from lampost.util import json
 from lampost.gameops import event
-from lampost.util.logging import LogFactory
 from lampost.server.user import UserManager
 
-
-resource.m_requires(__name__, 'log')
+log = logging.getLogger(__name__)
 
 
 def new_setup(args):
 
-    resource.register('log', LogFactory())
     json.select_json()
 
     # Initialize the database, flush if requested
@@ -21,7 +20,7 @@ def new_setup(args):
     if args.flush:
         db_num = datastore.pool.connection_kwargs['db']
         if db_num == args.db_num:
-            warn("Flushing database {}", db_num)
+            log.warn("Flushing database {}", db_num)
             datastore.redis.flushdb()
         else:
             print("Error:  DB Numbers do not match")
