@@ -42,7 +42,7 @@ class AnyLoginService(ClientService):
 
     def _post_init(self):
         super()._post_init()
-        register('player_login', self._process_login)
+        register('player_attach', self._process_login)
 
     def _process_login(self, player):
         self._session_dispatch({'any_login': {'name': player.name}})

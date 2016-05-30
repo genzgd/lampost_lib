@@ -68,7 +68,7 @@ class SessionManager():
         try:
             user = user_manager.validate_user(user_name, password)
         except ClientError as ce:
-            HQCKSO({'login_failure': ce.client_message})
+            session.append({'login_failure': ce.client_message})
             return
         session.connect_user(user)
         if len(user.player_ids) == 1:
@@ -100,8 +100,6 @@ class SessionManager():
         dispatch('user_connect', session.user, client_data)
         dispatch('player_connect', player, client_data)
         session.append({'login': client_data})
-        if not old_session:
-            dispatch('player_login', player)
         self.player_info_map[player.dbo_id] = session.player_info(session.activity_time)
         self._broadcast_status()
 

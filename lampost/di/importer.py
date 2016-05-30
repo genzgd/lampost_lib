@@ -2,7 +2,7 @@ import sys
 import importlib.abc
 import importlib.machinery
 
-from lampost.di.resource import inject
+from lampost.di.resource import module_inject
 
 _original_finder = sys.meta_path[-1]
 
@@ -20,11 +20,7 @@ class LampostFinder(_original_finder):
 class LampostLoader(importlib.machinery.SourceFileLoader):
     def exec_module(self, module):
         super().exec_module(module)
-        sys_module = sys.modules[module.__name__]
-        for name, value in sys_module.__dict__.copy().items():
-            if hasattr(value, '_lp_injected'):
-                inject(sys_module, value._lp_injected, name)
+        module_inject(module.__name__)
 
 
-def enable_di():
-    sys.meta_path.insert(-1, LampostFinder())
+sys.meta_path.insert(-1, LampostFinder())

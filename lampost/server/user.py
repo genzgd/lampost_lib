@@ -130,10 +130,11 @@ class UserManager():
             client_data['imm_level'] = player.imm_level
 
     def login_player(self, player):
-        dispatch('player_baptise', player)
+        dispatch('player_attach', player)
         player.last_login = int(time.time())
         if not player.created:
             player.created = player.last_login
+        player.attach()
         player.start()
 
     def logout_player(self, player):

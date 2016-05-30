@@ -58,6 +58,15 @@ def m_requires(module_name, *resources):
         _registered_modules.append(module)
 
 
+def module_inject(module_name):
+    module = sys.modules[module_name]
+    for name, value in module.__dict__.copy().items():
+        if hasattr(value, '_lp_injected'):
+            inject(module, value._lp_injected, name)
+    if module not in _registered_modules:
+        _registered_modules.append(module)
+
+
 def get_resource(name):
     return _registry[name]
 

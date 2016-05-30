@@ -15,7 +15,7 @@ _ALL_EMAIL_KEY = "all_email_notifies"
 class FriendService():
 
     def _post_init(self):
-        register('player_login', self._check_friends)
+        register('player_attach', self._check_friends)
         register('player_deleted', self._delete_player)
 
     def friend_request(self, source, target):

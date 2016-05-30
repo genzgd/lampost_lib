@@ -107,6 +107,7 @@ class RedisStore:
         return self.redis.exists('{}:{}'.format(obj_type, obj_id))
 
     def load_object_set(self, dbo_class, set_key=None):
+        dbo_class = get_dbo_class(getattr(dbo_class, 'dbo_key_type', dbo_class))
         key_type = dbo_class.dbo_key_type
         if not set_key:
             set_key = dbo_class.dbo_set_key
