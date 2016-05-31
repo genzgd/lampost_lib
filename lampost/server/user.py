@@ -138,7 +138,6 @@ class UserManager():
         if not player.created:
             player.created = player.last_login
         player.attach()
-        player.start()
 
     def logout_player(self, player):
         player.age += player.last_logout - player.last_login
