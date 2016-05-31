@@ -72,7 +72,6 @@ class Config(ParentDBO):
 
     def on_loaded(self):
         self.section_values = {}
-        self.exports = {}
         for child_key in self.dbo_child_keys('c_sect'):
             section = db.load_object(child_key, ConfigSection)
             if section:
@@ -99,4 +98,3 @@ class Setting(CoreDBO):
     min_value = DBOField()
     max_value = DBOField()
     step = DBOField(1)
-    export = DBOField(False)

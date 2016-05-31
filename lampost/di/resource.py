@@ -115,3 +115,6 @@ class Injected:
 
     def __call__(self, *args, **kwargs):
         log.error("Injected object {} called directly before injection".format(self._lp_injected))
+
+    def __get__(self, instance, owner=None):
+        log.error("Injected object {} __get__ method called directory before injection".format(self._lp_injected))
