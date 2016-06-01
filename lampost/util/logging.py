@@ -1,7 +1,7 @@
 import inspect
 import logging
 
-from logging import LogRecord, Logger
+from logging import LogRecord, Logger, basicConfig
 
 
 class LogFmtRecord(LogRecord):
@@ -31,14 +31,11 @@ class LogFactory():
         if not inspect.ismodule(consumer):
             consumer = consumer.__class__
         logger = logging.getLogger(consumer.__name__)
-        consumer.fatal = logger.fatal
-        consumer.error = logger.error
-        consumer.warn = logger.warn
-        consumer.info = logger.info
-        consumer.debug = logger.debug
-        consumer.exception = logger.exception
-        consumer.debug_enabled = lambda: logger.getEffectiveLevel() <= logging.DEBUG
+        logger.debug_enabled = lambda: logger.getEffectiveLevel() <= logging.DEBUG
         return logger
+
+    def set_level(self, log_level):
+        basicConfig(level=log_level)
 
 
 logging.setLoggerClass(LoggerFmt)

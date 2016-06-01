@@ -11,22 +11,12 @@ _methods = {}
 _registered_modules = []
 
 
-def register(name, service, export_methods=False):
+def register(name, service):
     if name in _registry:
         raise KeyError("service {} already registered".format(name))
     _registry[name] = service
     if service not in _registered_modules:
         _registered_modules.append(service)
-    if export_methods:
-        _methods[name] = {}
-        if inspect.ismodule(service):
-            for attr, value in service.__dict__.items():
-                if not attr.startswith('_') and not _registry.get(attr) and hasattr(value, '__call__'):
-                    _methods[name][attr] = value
-        else:
-            for attr, value in service.__class__.__dict__.items():
-                if not attr.startswith('_') and not _registry.get(attr) and hasattr(value, '__call__'):
-                    _methods[name][attr] = value.__get__(service, service.__class__)
     for cls, local_name in _consumer_map.get(name, []):
         _inject(cls, name, service, local_name)
     if name in _consumer_map:
@@ -40,22 +30,6 @@ def inject(cls, name, local_name=None):
         _inject(cls, name, service, local_name)
         return
     _consumer_map[name].append((cls, local_name))
-
-
-def requires(*resources):
-    def wrapper(cls):
-        for name in resources:
-            inject(cls, name)
-        return cls
-    return wrapper
-
-
-def m_requires(module_name, *resources):
-    module = sys.modules[module_name]
-    for name in resources:
-        inject(module, name)
-    if module not in _registered_modules:
-        _registered_modules.append(module)
 
 
 def module_inject(module_name, priority=1000):
@@ -78,7 +52,8 @@ def context_post_init():
         raise TypeError("Inject {} never triggered.  Did you miss a module_inject?".format(p_inject._lp_injected))
     for name, consumers in _consumer_map.items():
         for consumer in consumers:
-            raise TypeError("{} dependency not found for consumer {}", name, getattr(consumer, '__name__', consumer))
+            raise TypeError(
+                "{} dependency not found for consumer {}".format(name, getattr(consumer, '__name__', consumer)))
     for module in sorted(_registered_modules, key=_priority_sort):
         if hasattr(module, '_post_init'):
             module._post_init()
