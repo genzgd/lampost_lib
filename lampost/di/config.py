@@ -1,6 +1,8 @@
 import glob
 import sys
 import logging
+from weakref import WeakSet
+
 import yaml
 
 from collections import defaultdict
@@ -67,6 +69,8 @@ def inject_config(consumer, properties):
 def update_all():
     for consumer, properties in _consumer_map.items():
         inject_config(consumer, properties)
+    for config_value in _config_values:
+        config_value.update()
 
 
 def load_yaml(path):
@@ -96,3 +100,44 @@ def activate(all_values):
             _value_map[value_key] = value
     update_all()
     return _value_map
+
+
+_config_values = WeakSet()
+
+
+class ConfigValue:
+    def on_update(self, *_):
+        pass
+
+    def __init__(self, config_key, default=None, on_update=None):
+        _config_values.add(self)
+        if on_update is not None:
+            self.on_update = on_update
+        self.config_key = config_key
+        self.old_value = default
+        self.value = default
+        self.update()
+
+    def update(self):
+        try:
+            self.value = get_value(self.config_key)
+            if self.old_value != self.value:
+                self.on_update(self.value, self.old_value)
+                self.old_value = self.value
+        except KeyError:
+            pass
+
+    def __eq__(self, other):
+        return self.value.__eq__(other)
+
+    def __hash__(self):
+        return id(self)
+
+    def __str__(self):
+        if self.value is None:
+            return NotImplemented
+        return self.value
+
+
+class ConfigStr(ConfigValue):
+    pass
