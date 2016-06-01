@@ -4,7 +4,7 @@ import string
 from lampost.server.handlers import MethodHandler
 from lampost.di.resource import Injected, module_inject
 from lampost.db.exceptions import DataError
-from lampost.di.config import m_configured
+from lampost.di.config import ConfigVal
 from lampost.util.encrypt import make_hash
 from lampost.util.lputil import ClientError
 
@@ -18,7 +18,7 @@ edit_update = Injected('edit_update_service')
 friend_service = Injected('friend_service')
 module_inject(__name__)
 
-m_configured(__name__, 'lampost_title')
+lampost_title = ConfigVal('lampost_title')
 
 
 class Settings(MethodHandler):

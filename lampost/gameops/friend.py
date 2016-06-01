@@ -1,6 +1,6 @@
 from lampost.server.user import User
 from lampost.di.resource import Injected, module_inject
-from lampost.di.config import m_configured
+from lampost.di.config import ConfigVal
 from lampost.util.lputil import ClientError
 
 db = Injected('datastore')
@@ -11,11 +11,11 @@ email = Injected('email_sender')
 perm = Injected('perm')
 module_inject(__name__)
 
-m_configured(__name__, 'lampost_title')
-
 _REQUEST_KEY = "friend_requests"
 _FRIEND_EMAIL_KEY = "friend_email_notifies"
 _ALL_EMAIL_KEY = "all_email_notifies"
+
+lampost_title = ConfigVal('lampost_title')
 
 
 class FriendService():

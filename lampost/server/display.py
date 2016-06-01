@@ -1,5 +1,5 @@
 from lampost.di.resource import Injected, module_inject
-from lampost.di.config import m_configured
+from lampost.di.config import on_configured, config_value
 
 ev = Injected('dispatcher')
 module_inject(__name__)
@@ -7,12 +7,11 @@ module_inject(__name__)
 client_displays = {}
 
 
+@on_configured
 def _on_configured():
     client_displays.clear()
-    for display in default_displays:
+    for display in config_value('default_displays'):
         client_displays[display['name']] = display['value']
-
-m_configured(__name__, 'default_displays')
 
 
 def _post_init():

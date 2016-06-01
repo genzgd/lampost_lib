@@ -1,15 +1,13 @@
 from lampost.server.services import ClientService
 from lampost.gameops.action import make_action
 from lampost.di.resource import Injected, module_inject
-from lampost.di.config import m_configured
+from lampost.di.config import config_value
 from lampost.util.lputil import timestamp
 
 ev = Injected('dispatcher')
 db = Injected('datastore')
 cs = Injected('channel_service')
 module_inject(__name__)
-
-m_configured(__name__, 'max_channel_history')
 
 
 class Channel():
@@ -106,7 +104,7 @@ class ChannelService(ClientService):
 
     def _prune_channels(self):
         for channel_id in self.all_channels:
-            db.trim_db_list(channel_key(channel_id), 0, max_channel_history)
+            db.trim_db_list(channel_key(channel_id), 0, config_value('max_channel_history'))
 
 
 def channel_key(channel_id):

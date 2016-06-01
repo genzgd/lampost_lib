@@ -1,4 +1,4 @@
-from lampost.di.config import m_configured
+from lampost.di.config import config_value
 from lampost.di.resource import Injected, module_inject
 from lampost.util.lputil import PermError
 
@@ -6,21 +6,19 @@ db = Injected('datastore')
 module_inject(__name__)
 
 
-def _on_configured():
-    global _rev_levels
-    _rev_levels = {level: name for name, level in imm_levels.items()}
-
-m_configured(__name__, 'imm_levels', 'system_accounts', 'system_level')
-
-
 def _post_init():
+    global imm_levels
+    global _level_to_name
     global immortals
+    imm_levels = config_value('imm_levels')
+    _level_to_name = {level: name for name, level in imm_levels.items()}
+    system_level = config_value('system_level')
     immortals = db.get_all_hash('immortals')
-    immortals.update({account: system_level for account in system_accounts})
+    immortals.update({account: system_level for account in config_value('system_accounts')})
 
 
 def perm_name(num_level):
-    return _rev_levels.get(num_level, 'player')
+    return _level_to_name.get(num_level, 'player')
 
 
 def update_immortal_list(player):
