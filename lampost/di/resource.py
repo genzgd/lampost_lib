@@ -1,6 +1,5 @@
 import logging
 import sys
-import inspect
 from collections import defaultdict
 
 log = logging.getLogger(__name__)
@@ -8,16 +7,12 @@ log = logging.getLogger(__name__)
 context_initialized = False
 _registry = {}
 _consumer_map = defaultdict(list)
-_methods = {}
-_registered_modules = []
 
 
 def register(name, service):
     if name in _registry:
         raise KeyError("service {} already registered".format(name))
     _registry[name] = service
-    if service not in _registered_modules:
-        _registered_modules.append(service)
     for cls, local_name in _consumer_map.get(name, []):
         _inject(cls, name, service, local_name)
     if name in _consumer_map:
@@ -33,44 +28,24 @@ def inject(cls, name, local_name=None):
     _consumer_map[name].append((cls, local_name))
 
 
-def module_inject(module_name, priority=1000):
+def module_inject(module_name):
     module = sys.modules[module_name]
     for name, value in module.__dict__.copy().items():
         if hasattr(value, '_lp_injected'):
             inject(module, value._lp_injected, name)
             _pending_injects.discard(value)
-    if module not in _registered_modules:
-        module._init_priority = getattr(module, '_init_priority', priority)
-        _registered_modules.append(module)
 
 
 def get_resource(name):
     return _registry[name]
 
 
-def context_post_init():
-    global context_initialized
-    if context_initialized:
-        raise RuntimeError("Resource Context Already Initialized")
-    context_initialized = True
+def validate_injected():
     for p_inject in _pending_injects:
         raise TypeError("Inject {} never triggered.  Did you miss a module_inject?".format(p_inject._lp_injected))
     for name, consumers in _consumer_map.items():
         for consumer in consumers:
-            raise TypeError(
-                "{} dependency not found for consumer {}".format(name, getattr(consumer, '__name__', consumer)))
-    for module in sorted(_registered_modules, key=_priority_sort):
-        if hasattr(module, '_post_init'):
-            module._post_init()
-
-
-def _priority_sort(module):
-    try:
-        return getattr(module, '_init_priority')
-    except AttributeError:
-        if inspect.isclass(module):
-            return 1000
-        return 2000
+            raise TypeError("{} dependency not found for consumer {}".format(name, getattr(consumer, '__name__', consumer)))
 
 
 def _inject(cls, name, service, local_name):
@@ -80,9 +55,6 @@ def _inject(cls, name, service, local_name):
         setattr(cls, local_name, service.factory(cls))
     else:
         setattr(cls, local_name, service)
-    for attr, value in _methods.get(name, {}).items():
-        if not getattr(cls, attr, None):
-            setattr(cls, attr, value)
 
 
 _pending_injects = set()

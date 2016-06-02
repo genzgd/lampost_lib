@@ -1,20 +1,25 @@
 import glob
+import inspect
 import logging
-from weakref import WeakSet
-
 import yaml
 
+from weakref import WeakSet
+
+from lampost.util.funcs import optional_arg_decorator
 
 log = logging.getLogger(__name__)
 
 _value_map = {}
 _section_value_map = {}
-_config_funcs = set()
+_change_funcs = set()
 _config_values = WeakSet()
 
+activated = False
 
-def on_configured(func):
-    _config_funcs.add(func)
+
+@optional_arg_decorator
+def on_config_change(func, priority=1000):
+    _change_funcs.add((func, priority))
     return func
 
 
@@ -45,16 +50,18 @@ def _find_value(key):
         pass
 
 
-def update_all():
+def update_values():
     for config_value in _config_values:
         config_value.update()
-    for config_func in _config_funcs:
-        config_func()
+
+
+def refresh_config():
+    for func, priority in sorted(_change_funcs, key= lambda f: f[1]):
+        func()
 
 
 def load_yaml(path):
     all_config = []
-
     for file_name in glob.glob("{}/*yaml".format(path)):
         with open(file_name, 'r') as yf:
             log.info("Processing config file {}", file_name)
@@ -63,11 +70,11 @@ def load_yaml(path):
                 all_config.append(yaml_load)
             except yaml.YAMLError:
                 log.exception("Error parsing {}", yf)
-
     return all_config
 
 
 def activate(all_values):
+    global activated
     _section_value_map.clear()
     _value_map.clear()
     for section_key, value in all_values.items():
@@ -77,6 +84,8 @@ def activate(all_values):
             log.warn("Duplicate value for {} found in section {}", value_key, section_key.split(':')[0])
         else:
             _value_map[value_key] = value
+    update_values()
+    activated = True
     return _value_map
 
 

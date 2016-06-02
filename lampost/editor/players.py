@@ -1,3 +1,4 @@
+from lampost.di.app import on_app_start
 from lampost.server.handlers import SessionHandler
 from lampost.di.resource import Injected, module_inject
 from lampost.db.exceptions import DataError
@@ -12,8 +13,8 @@ um = Injected('user_manager')
 edit_update = Injected('edit_update_service')
 module_inject(__name__)
 
-
-def _post_init():
+@on_app_start
+def _start():
     ev.register('imm_level_change', imm_level_change)
 
 

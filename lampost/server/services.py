@@ -1,3 +1,4 @@
+from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 
 log = Injected('log')
@@ -10,8 +11,9 @@ module_inject(__name__)
 class ClientService():
     def __init__(self):
         self.sessions = set()
+        on_app_start(self._start)
 
-    def _post_init(self):
+    def _start(self):
         ev.register('session_disconnect', self.unregister)
 
     def register(self, session, data=None):
@@ -30,8 +32,8 @@ class ClientService():
 
 class PlayerListService(ClientService):
 
-    def _post_init(self):
-        super()._post_init()
+    def _start(self):
+        super()._start()
         ev.register('player_list', self._process_list)
 
     def register(self, session, data):
@@ -44,8 +46,8 @@ class PlayerListService(ClientService):
 
 class AnyLoginService(ClientService):
 
-    def _post_init(self):
-        super()._post_init()
+    def _start(self):
+        super()._start()
         ev.register('player_attach', self._process_login)
 
     def _process_login(self, player):
@@ -54,8 +56,8 @@ class AnyLoginService(ClientService):
 
 class EditUpdateService(ClientService):
 
-    def _post_init(self):
-        super()._post_init()
+    def _start(self):
+        super()._start()
         ev.register('publish_edit', self.publish_edit)
 
     def publish_edit(self, edit_type, edit_obj, source_session=None, local=False):

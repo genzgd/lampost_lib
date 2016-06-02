@@ -1,3 +1,4 @@
+from lampost.di.app import on_app_start
 from lampost.di.config import config_value
 from lampost.di.resource import Injected, module_inject
 from lampost.util.lputil import PermError
@@ -6,7 +7,8 @@ db = Injected('datastore')
 module_inject(__name__)
 
 
-def _post_init():
+@on_app_start(500)
+def _init():
     global imm_levels
     global _level_to_name
     global immortals

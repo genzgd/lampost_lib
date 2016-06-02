@@ -2,6 +2,7 @@ import bisect
 import inspect
 from collections import defaultdict
 
+from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
 from lampost.db.dbo import ChildDBO, DBOFacet
@@ -14,8 +15,9 @@ module_inject(__name__)
 script_cache = {}
 
 
-def _post_init():
-    ev.register('maintenance', lambda: script_cache.clear())
+@on_app_start
+def _start():
+    ev.register('maintenance', script_cache.clear)
 
 
 def create_chain(funcs):

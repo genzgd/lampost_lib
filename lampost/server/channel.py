@@ -44,8 +44,8 @@ class Channel():
 
 class ChannelService(ClientService):
 
-    def _post_init(self):
-        super()._post_init()
+    def _start(self):
+        super()._start()
         self.all_channels = db.fetch_set_keys('all_channels')
         self.general_channels = db.fetch_set_keys('general_channels')
         ev.register('maintenance', self._prune_channels)

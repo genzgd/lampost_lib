@@ -3,8 +3,9 @@ from datetime import datetime, timedelta
 from os import urandom
 from base64 import b64encode
 
+from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
-from lampost.di.config import on_configured, config_value
+from lampost.di.config import on_config_change, config_value
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -19,12 +20,14 @@ class SessionManager():
         self.session_map = {}
         self.player_info_map = {}
         self.player_session_map = {}
+        on_app_start(self._on_app_start)
+        on_config_change(self._update_config)
 
-    def _post_init(self):
+    def _on_app_start(self):
         ev.register('player_logout', self._player_logout)
+        self._update_config()
 
-    @on_configured
-    def _on_configured(self):
+    def _update_config(self):
         ev.detach_events(self)
         ev.register_p(self._refresh_link_status, seconds=config_value('refresh_link_interval'))
         ev.register_p(self._broadcast_status, seconds=config_value('broadcast_interval'))

@@ -1,6 +1,7 @@
 from base64 import b64decode
 import time
 
+from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.db.dbo import KeyDBO, SystemDBO
 from lampost.db.dbofield import DBOField
@@ -45,7 +46,10 @@ class User(KeyDBO, SystemDBO):
 
 
 class UserManager():
-    def _post_init(self):
+    def __init__(self):
+        on_app_start(self._start)
+
+    def _start(self):
         ev.register("user_connect", self._user_connect)
         ev.register("player_connect", self._player_connect)
 

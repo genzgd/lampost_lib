@@ -1,6 +1,7 @@
 from tornado.ioloop import PeriodicCallback
 
-from lampost.di.config import on_configured, config_value
+from lampost.di.app import on_app_start
+from lampost.di.config import on_config_change, config_value
 from lampost.di.resource import Injected, module_inject
 from lampost.event.dispatcher import PulseDispatcher
 
@@ -14,13 +15,15 @@ pulse_lc = None
 maintenance_lc = None
 
 
-def _post_init():
+@on_app_start
+def _start():
     dispatcher.current_pulse = db.load_raw('event_pulse', 0)
     dispatcher.register_p(lambda: db.save_raw('event_pulse', dispatcher.current_pulse), 100)
+    _start_heartbeat()
 
 
-@on_configured
-def _on_configured():
+@on_config_change
+def _start_heartbeat():
     global pulse_lc, maintenance_lc
     pulse_interval = config_value('pulse_interval')
     maintenance_interval = config_value('maintenance_interval')

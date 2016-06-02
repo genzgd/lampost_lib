@@ -2,11 +2,11 @@ from importlib import import_module
 
 from lampost.event.dispatcher import PulseDispatcher
 from lampost.util import json
-from lampost.di import resource, config
+from lampost.di import resource, config, app
 from lampost.db import redisstore, permissions, dbconfig
 from lampost.server.user import UserManager
 
-log = resource.get('log').factory(__name__)
+log = resource.get_resource('log').factory(__name__)
 
 
 def new_setup(args):
@@ -33,10 +33,10 @@ def new_setup(args):
     config_values = config.activate(db_config.section_values)
 
     # Initialize core services needed by the reset of the setup process
-    resource.register('dispatcher', PulseDispatcher(), True)
-    perm = resource.register('perm', permissions, True)
+    resource.register('dispatcher', PulseDispatcher())
+    perm = resource.register('perm', permissions)
     user_manager = resource.register('user_manager', UserManager())
-    resource.context_post_init()
+    app.start_app()
 
     app_setup = import_module('{}.setup'.format(args.app_id))
 
