@@ -25,16 +25,20 @@ class SessionManager():
 
     def _on_app_start(self):
         ev.register('player_logout', self._player_logout)
-        self._update_config()
+        self._config()
 
-    def _update_config(self):
-        ev.detach_events(self)
-        ev.register_p(self._refresh_link_status, seconds=config_value('refresh_link_interval'))
-        ev.register_p(self._broadcast_status, seconds=config_value('broadcast_interval'))
+    def _config(self):
+        self._link_reg = ev.register_p(self._refresh_link_status, seconds=config_value('refresh_link_interval'))
+        self._broadcast_reg = ev.register_p(self._broadcast_status, seconds=config_value('broadcast_interval'))
 
         self.link_dead_prune = timedelta(seconds=config_value('link_dead_prune'))
         self.link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
         self.link_idle_refresh = timedelta(seconds=config_value('link_idle_refresh'))
+
+    def _update_config(self):
+        ev.unregister(self._link_reg)
+        ev.unregister(self._broadcast_reg)
+        self._config()
 
     def get_session(self, session_id):
         return self.session_map.get(session_id)
