@@ -20,9 +20,9 @@ lampost_title = ConfigVal('lampost_title')
 
 
 @on_app_start
-def _start(self):
-    ev.register('player_attach', self._check_friends)
-    ev.register('player_deleted', self._delete_player)
+def _start():
+    ev.register('player_attach', _check_friends)
+    ev.register('player_deleted', _delete_player)
 
 
 def friend_request(source, target):

@@ -1,5 +1,3 @@
-import inspect
-
 from lampost.di import resource
 from lampost.di import config
 from lampost.util.funcs import optional_arg_decorator
@@ -28,7 +26,4 @@ def start_app():
 
 def exec_bootstraps():
     for func, _ in sorted(_bootstrap_funcs, key=lambda f: f[1]):
-        if 'first_time' in inspect.getargspec(func).args:
-            func(first_time=not app_started)
-        else:
-            func()
+        func()

@@ -17,7 +17,7 @@ script_cache = {}
 
 @on_app_start
 def _start():
-    ev.register('maintenance', script_cache.clear)
+    ev.register('maintenance', lambda: script_cache.clear())
 
 
 def create_chain(funcs):

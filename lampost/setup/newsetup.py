@@ -12,7 +12,7 @@ log = resource.get_resource('log').factory(__name__)
 def new_setup(args):
     json.select_json()
 
-    datastore = resource.register('datastore', redisstore.RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw), True)
+    datastore = resource.register('datastore', redisstore.RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw))
     if args.flush:
         db_num = datastore.pool.connection_kwargs['db']
         if db_num == args.db_num:
