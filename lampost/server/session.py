@@ -4,7 +4,7 @@ from os import urandom
 from base64 import b64encode
 
 from lampost.di.resource import Injected, module_inject
-from lampost.di.config import ConfigVal
+from lampost.di.config import on_configured, config_value
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -21,12 +21,17 @@ class SessionManager():
         self.player_session_map = {}
 
     def _post_init(self):
-        ev.register_p(self._refresh_link_status, seconds=ConfigVal('refresh_link_interval'))
-        ev.register_p(self._broadcast_status, seconds=ConfigVal('broadcast_interval'))
-        self.link_dead_prune = timedelta(seconds=ConfigVal('link_dead_prune').value)
-        self.link_dead_interval = timedelta(seconds=ConfigVal('link_dead_interval').value)
-        self.link_idle_refresh = timedelta(seconds=ConfigVal('link_idle_refresh').value)
         ev.register('player_logout', self._player_logout)
+
+    @on_configured
+    def _on_configured(self):
+        ev.detach_events(self)
+        ev.register_p(self._refresh_link_status, seconds=config_value('refresh_link_interval'))
+        ev.register_p(self._broadcast_status, seconds=config_value('broadcast_interval'))
+
+        self.link_dead_prune = timedelta(seconds=config_value('link_dead_prune'))
+        self.link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
+        self.link_idle_refresh = timedelta(seconds=config_value('link_idle_refresh'))
 
     def get_session(self, session_id):
         return self.session_map.get(session_id)

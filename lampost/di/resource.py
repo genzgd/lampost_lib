@@ -5,6 +5,7 @@ from collections import defaultdict
 
 log = logging.getLogger(__name__)
 
+context_initialized = False
 _registry = {}
 _consumer_map = defaultdict(list)
 _methods = {}
@@ -48,6 +49,10 @@ def get_resource(name):
 
 
 def context_post_init():
+    global context_initialized
+    if context_initialized:
+        raise RuntimeError("Resource Context Already Initialized")
+    context_initialized = True
     for p_inject in _pending_injects:
         raise TypeError("Inject {} never triggered.  Did you miss a module_inject?".format(p_inject._lp_injected))
     for name, consumers in _consumer_map.items():

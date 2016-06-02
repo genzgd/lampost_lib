@@ -1,47 +1,21 @@
 import glob
-import sys
 import logging
 from weakref import WeakSet
 
 import yaml
 
-from collections import defaultdict
 
 log = logging.getLogger(__name__)
 
-_consumer_map = defaultdict(set)
 _value_map = {}
 _section_value_map = {}
 _config_funcs = set()
+_config_values = WeakSet()
 
 
 def on_configured(func):
     _config_funcs.add(func)
     return func
-
-
-def m_configured(module_name, *config_properties):
-    _register(sys.modules[module_name], *config_properties)
-
-
-def configured(*config_properties):
-    def wrapper(cls):
-        original_init = cls.__init__
-
-        def init_and_register(self, *args, **kwargs):
-            _register(self, *config_properties)
-            original_init(self, *args, **kwargs)
-
-        cls.__init__ = init_and_register
-        return cls
-
-    return wrapper
-
-
-def _register(cls, *config_properties):
-    _consumer_map[cls].update(config_properties)
-    if _value_map:
-        inject_config(cls, config_properties)
 
 
 def config_value(key, default=None):
@@ -69,33 +43,9 @@ def _find_value(key):
         return _value_map[key]
     except KeyError:
         pass
-    
-
-def inject_config(consumer, properties):
-    for prop in properties:
-        try:
-            if ':' in prop:
-                property_name, value = prop.split(':')[1], _section_value_map[prop]
-            else:
-                property_name, value = prop, _value_map[prop]
-        except KeyError:
-            log.error("No value found for configuration value {} in consumer {}", prop, consumer.__name__)
-            continue
-        try:
-            old_value = getattr(consumer, property_name)
-            if old_value == value:
-                return
-            log.info("Updating config {} from {} to {} in {}.", property_name, old_value, value, consumer.__name__)
-        except AttributeError:
-            log.info("Setting config {}: {} in {}.", property_name, value, consumer.__name__)
-        setattr(consumer, property_name, value)
-    if hasattr(consumer, '_on_configured'):
-        consumer._on_configured()
 
 
 def update_all():
-    for consumer, properties in _consumer_map.items():
-        inject_config(consumer, properties)
     for config_value in _config_values:
         config_value.update()
     for config_func in _config_funcs:
@@ -127,11 +77,7 @@ def activate(all_values):
             log.warn("Duplicate value for {} found in section {}", value_key, section_key.split(':')[0])
         else:
             _value_map[value_key] = value
-    update_all()
     return _value_map
-
-
-_config_values = WeakSet()
 
 
 class ConfigVal:
@@ -151,74 +97,3 @@ class ConfigVal:
                 self.old_value = self.value
         except KeyError:
             pass
-
-    def __eq__(self, other):
-        if isinstance(other, ConfigVal):
-            return id(self) == id(other)
-        return self.value == other
-
-    def __hash__(self):
-        return id(self)
-
-    def __str__(self):
-        return str(self)
-
-    def __cmp__(self, other):
-        return self.value.__cmp__(other)
-
-    def __float__(self):
-        return self.value.__float__()
-
-    def __int__(self):
-        return self.value.__int__()
-
-    def __iter__(self):
-        return self.value.__iter__()
-
-    def __add__(self, other):
-        result = self.value.__add__(other)
-        if result == NotImplemented and hasattr(self.value, "__float__"):
-            return self.value.__float__().__add__(other)
-        return result
-
-    def __radd__(self, other):
-        return other + self.value
-
-    def __coerce__(self, other):
-        return self.value.__coerce__(other)
-
-    def __sub__(self, other):
-        result = self.value.__sub__(other)
-        if result == NotImplemented and hasattr(self.value, "__float__"):
-            return self.value.__float__().__sub__(other)
-        return result
-
-    def __rsub__(self, other):
-        return other - self.value
-
-    def __mul__(self, other):
-        result = self.value.__mul__(other)
-        if result == NotImplemented and hasattr(self.value, "__float__"):
-            return self.value.__float__().__mul__(other)
-        return result
-
-    def __rmul__(self, other):
-        return other * self.value
-
-    def __truediv__(self, other):
-        result = self.value.__truediv__(other)
-        if result == NotImplemented and hasattr(self.value, "__float__"):
-            return self.value.__float__().__truediv__(other)
-        return result
-
-    def __floordiv__(self, other):
-        result = self.value.__floordiv__(other)
-        if result == NotImplemented and hasattr(self.value, "__float__"):
-            return self.value.__float__().__floordiv__(other)
-        return result
-
-    def __pos__(self):
-        return +self.value
-
-    def __neg__(self):
-        return -self.value

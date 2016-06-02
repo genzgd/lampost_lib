@@ -105,7 +105,7 @@ class Settings(MethodHandler):
             raise DataError("User Email Not Found")
         user = db.load_object(user_id, "user")
         email_msg = "Your {} account name is {}.\nThe players on this account are {}."\
-            .format(lampost_title, user.user_name,
+            .format(lampost_title.value, user.user_name,
                     ','.join([player_id.capitalize() for player_id in user.player_ids]))
         email.send_targeted_email('Account/Player Names', email_msg, [user])
 
@@ -123,7 +123,7 @@ class Settings(MethodHandler):
             raise DataError("No Email On File For {}".format(info))
         temp_pw = ''.join(random.choice(string.ascii_letters + string.digits) for _ in range(12))
         email_msg = "Your {} temporary password is {}.\nYou will be asked to change it after you log in."\
-            .format(lampost_title, temp_pw)
+            .format(lampost_title.value, temp_pw)
         user.password = make_hash(temp_pw)
         user.password_reset = True
         db.save_object(user)
