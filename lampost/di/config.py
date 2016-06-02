@@ -44,21 +44,32 @@ def _register(cls, *config_properties):
         inject_config(cls, config_properties)
 
 
-def config_value(property_name, default=None):
-    if ':' in property_name:
+def config_value(key, default=None):
+    if ':' in key:
         try:
-            return _section_value_map[property_name]
+            return _section_value_map[key]
         except KeyError:
             pass
     try:
-        return _value_map[property_name]
+        return _value_map[key]
     except KeyError:
         pass
-    if default is not None:
-        return default
-    l
-    
+    if default is None:
+        log.error("No value found for config key {}", key)
+    return default
 
+
+def _find_value(key):
+    if ':' in key:
+        try:
+            return _section_value_map[key]
+        except KeyError:
+            pass
+    try:
+        return _value_map[key]
+    except KeyError:
+        pass
+    
 
 def inject_config(consumer, properties):
     for prop in properties:
@@ -124,13 +135,9 @@ _config_values = WeakSet()
 
 
 class ConfigVal:
-    def on_update(self, *_):
-        pass
-
-    def __init__(self, config_key, default=None, on_update=None):
+    def __init__(self, config_key, default=None, on_update=lambda *x: None):
         _config_values.add(self)
-        if on_update is not None:
-            self.on_update = on_update
+        self.on_update = on_update
         self.config_key = config_key
         self.old_value = default
         self.value = default
@@ -138,7 +145,7 @@ class ConfigVal:
 
     def update(self):
         try:
-            self.value = config_value(self.config_key)
+            self.value = _find_value(self.config_key)
             if self.old_value != self.value:
                 self.on_update(self.value, self.old_value)
                 self.old_value = self.value
@@ -164,6 +171,9 @@ class ConfigVal:
 
     def __int__(self):
         return self.value.__int__()
+
+    def __iter__(self):
+        return self.value.__iter__()
 
     def __add__(self, other):
         result = self.value.__add__(other)
@@ -196,15 +206,19 @@ class ConfigVal:
         return other * self.value
 
     def __truediv__(self, other):
-        try:
-            return self.value / other
-        except NotImplementedError:
-            return float(self.value) / other
+        result = self.value.__truediv__(other)
+        if result == NotImplemented and hasattr(self.value, "__float__"):
+            return self.value.__float__().__truediv__(other)
+        return result
 
     def __floordiv__(self, other):
-        try:
-            return self.value // other
-        except NotImplementedError:
-            return float(self.value) // other
+        result = self.value.__floordiv__(other)
+        if result == NotImplemented and hasattr(self.value, "__float__"):
+            return self.value.__float__().__floordiv__(other)
+        return result
 
+    def __pos__(self):
+        return +self.value
 
+    def __neg__(self):
+        return -self.value
