@@ -28,9 +28,11 @@ class LoggerFmt(Logger):
 
 class LogFactory():
     def factory(self, consumer):
-        if not inspect.ismodule(consumer):
-            consumer = consumer.__class__
-        logger = logging.getLogger(consumer.__name__)
+        if inspect.isclass(consumer):
+            consumer = consumer.__qualname__
+        if inspect.ismodule(consumer):
+            consumer = consumer.__name__
+        logger = logging.getLogger(consumer)
         logger.debug_enabled = lambda: logger.getEffectiveLevel() <= logging.DEBUG
         return logger
 

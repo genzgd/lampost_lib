@@ -6,23 +6,23 @@ from lampost.di import resource, config, app
 from lampost.db import redisstore, permissions, dbconfig
 from lampost.server.user import UserManager
 
-log = resource.get_resource('log').factory(__name__)
+log = resource.get_resource('log').factory('setup')
 
 
 def new_setup(args):
     json.select_json()
 
-    datastore = resource.register('datastore', redisstore.RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw))
+    db = resource.register('datastore', redisstore.RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw))
     if args.flush:
-        db_num = datastore.pool.connection_kwargs['db']
+        db_num = db.pool.connection_kwargs['db']
         if db_num == args.db_num:
             log.info("Flushing database {}", db_num)
-            datastore.redis.flushdb()
+            db.redis.flushdb()
         else:
             print("Error:  DB Numbers do not match")
             return
 
-    db_config = datastore.load_object(args.config_id, 'config')
+    db_config = db.load_object(args.config_id, 'config')
     if db_config:
         print("Error:  This instance is already set up")
         return
@@ -36,11 +36,12 @@ def new_setup(args):
     resource.register('dispatcher', PulseDispatcher())
     perm = resource.register('perm', permissions)
     user_manager = resource.register('user_manager', UserManager())
+    resource.register('edit_update_service', SetupEditUpdate)
     app.start_app()
 
     app_setup = import_module('{}.setup'.format(args.app_id))
 
-    first_player = app_setup.first_time_setup(args, datastore, config_values)
+    first_player = app_setup.first_time_setup(args, db, config_values)
     user = user_manager.create_user(args.imm_account, args.imm_password)
     player = user_manager.attach_player(user, first_player)
     perm.update_immortal_list(player)
@@ -49,4 +50,4 @@ def new_setup(args):
 class SetupEditUpdate:
     @classmethod
     def publish_edit(cls, edit_type, edit_obj, *_):
-        log.info("Edit:  type: {}  obj: {}".format(edit_type, edit_obj))
+        log.info('Edit:  type: {}  obj: "{}"', edit_type, edit_obj.dbo_key)
