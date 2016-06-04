@@ -1,5 +1,6 @@
 import logging
 
+from lampost.db.dbo import CoreDBO
 from lampost.meta.core import CoreMeta
 from lampost.db.registry import get_dbo_class
 from lampost.db.dbofield import DBOField, DBOTField
@@ -21,7 +22,7 @@ class Template(metaclass=CoreMeta):
         pass
 
 
-class TemplateInstance(metaclass=CoreMeta):
+class TemplateInstance(CoreDBO):
 
     @classmethod
     def _mixin_init(cls, name, bases, new_attrs):
