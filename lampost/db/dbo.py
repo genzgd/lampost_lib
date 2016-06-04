@@ -151,6 +151,13 @@ class OwnerDBO(DBOFacet):
         except KeyError:
             return perm.perm_to_level('admin')
 
+    def _on_db_created(self):
+        log.info("{} created new object {}", self.owner_id, self.dbo_key)
+        db.add_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
+
+    def _on_db_deleted(self):
+        db.delete_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
+
     def can_read(self, immortal):
         return immortal.imm_level >= self.read_access
 
@@ -161,17 +168,10 @@ class OwnerDBO(DBOFacet):
             return immortal.imm_level >= self.write_access
         return immortal.imm_level >= self.imm_level
 
-    def on_created(self):
-        log.info("{} created new object {}", self.owner_id, self.dbo_key)
-        db.add_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
-
-    def on_deleted(self):
-        db.delete_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
-
     def change_owner(self, new_owner=None):
-        self.on_deleted()
+        self._on_db_deleted()
         self.owner_id = new_owner or 'lampost'
-        self.on_created()
+        self._on_db_created()
 
 
 class KeyDBO(CoreDBO):
@@ -213,10 +213,10 @@ class KeyDBO(CoreDBO):
         return save_value
 
     def db_created(self):
-        call_mro(self, 'on_created')
+        call_mro(self, '_on_db_created')
 
     def db_deleted(self):
-        call_mro(self, 'on_deleted')
+        call_mro(self, '_on_db_deleted')
 
     def autosave(self):
         db.save_object(self, autosave=True)

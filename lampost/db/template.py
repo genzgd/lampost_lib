@@ -9,6 +9,7 @@ log = logging.getLogger(__name__)
 
 
 class Template(metaclass=CoreMeta):
+    instance_cls = None
 
     def create_instance(self, owner=None):
         instance = self.instance_cls()

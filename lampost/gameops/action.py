@@ -1,11 +1,9 @@
 import inspect
-
 import itertools
 
 from lampost.di.resource import Injected, module_inject
-from lampost.meta.auto import AutoField
-from lampost.meta.core import CoreMeta
 from lampost.gameops import target_gen
+from lampost.meta.auto import AutoField, AutoAttrInit
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -61,7 +59,6 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
 
 
 def obj_action(**kwargs):
-
     def decorator(func):
         if 'verbs' not in kwargs:
             kwargs['verbs'] = func.__name__
@@ -127,7 +124,7 @@ class ActionError(ClientError):
         super().__init__(msg, display)
 
 
-class ActionProvider(metaclass=CoreMeta):
+class ActionProvider(AutoAttrInit):
     instance_providers = AutoField([])
 
     @classmethod

@@ -57,7 +57,6 @@ class Settings(MethodHandler):
         db.update_object(user, update_dict)
         edit_update.publish_edit('update', user)
 
-
     def delete_account(self):
         user = self.session.user
         if user.player_ids:
