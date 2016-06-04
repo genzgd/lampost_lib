@@ -12,8 +12,8 @@ class Attachable(metaclass=CoreMeta):
 
     def attach(self):
         if not self.attached:
-            call_mro(self, '_on_attach')
             self.attached = True
+            call_mro(self, '_on_attach')
 
     def detach(self):
         ev.detach_events(self)
