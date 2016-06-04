@@ -137,11 +137,11 @@ class UserManager():
             client_data['imm_level'] = player.imm_level
 
     def login_player(self, player):
+        player.attach()
         ev.dispatch('player_attach', player)
         player.last_login = int(time.time())
         if not player.created:
             player.created = player.last_login
-        player.attach()
 
     def logout_player(self, player):
         player.age += player.last_logout - player.last_login

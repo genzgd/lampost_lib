@@ -2,10 +2,10 @@ def cls_name(cls):
     return ".".join([cls.__module__, cls.__name__])
 
 
-def call_mro(self, func_name, *args, **kwargs):
-    for cls in reversed(self.__class__.__mro__):
+def call_mro(obj, func_name, *args, **kwargs):
+    for cls in reversed(obj.__class__.__mro__):
         try:
-            cls.__dict__[func_name](self, *args, **kwargs)
+            cls.__dict__[func_name](obj, *args, **kwargs)
         except KeyError:
             pass
 

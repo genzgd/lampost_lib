@@ -22,7 +22,6 @@ class DBOFacet(AutoAttrInit):
 
         cls._update(bases, 'dbo_fields')
         cls._update_dbo_fields(new_attrs)
-        cls._extend(bases, "load_funcs", "on_loaded")
 
     @classmethod
     def _update_dbo_fields(cls, new_attrs):
@@ -38,7 +37,6 @@ class DBOFacet(AutoAttrInit):
                         log.nfo("Overriding default value of attr{} in class {}", name, cls.__name__)
                     cls.dbo_fields[name] = attr
 
-
     @classmethod
     def add_dbo_fields(cls, new_fields):
         cls._meta_init_attrs(new_fields)
@@ -51,9 +49,8 @@ class CoreDBO(DBOFacet):
     dbo_owner = None
     load_funcs = []
 
-    def _on_loaded(self):
-        for load_func in self.load_funcs:
-            load_func(self)
+    def on_loaded(self):
+        call_mro(self, '_on_loaded')
 
     def hydrate(self, dto):
         for field, dbo_field in self.dbo_fields.items():
@@ -68,7 +65,7 @@ class CoreDBO(DBOFacet):
             if not dbo_value and dbo_field.required:
                 log.warn("Missing required field {} in object {}", field, dto)
                 return None
-        self._on_loaded()
+        self.on_loaded()
         return self
 
     def clone(self):
@@ -76,7 +73,7 @@ class CoreDBO(DBOFacet):
         if hasattr(self, 'dbo_id'):
             setattr(clone, 'dbo_id', self.dbo_id)
         clone.template = self
-        clone._on_loaded()
+        clone.on_loaded()
         return clone
 
     @property

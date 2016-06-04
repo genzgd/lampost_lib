@@ -14,7 +14,7 @@ class Template(metaclass=CoreMeta):
         instance = self.instance_cls()
         instance.template = self
         instance.template_key = self.dbo_key
-        instance._on_loaded()
+        instance.on_loaded()
         self.config_instance(instance, owner)
         return instance
 
@@ -23,6 +23,7 @@ class Template(metaclass=CoreMeta):
 
 
 class TemplateInstance(CoreDBO):
+    template = None
 
     @classmethod
     def _mixin_init(cls, name, bases, new_attrs):

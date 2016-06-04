@@ -99,7 +99,7 @@ class ShadowScript(ChildDBO):
 
     code = None
 
-    def on_loaded(self):
+    def _on_loaded(self):
         if self.approved:
             self.code, _ = compile_script(self.script_hash, self.text, self.dbo_id)
         else:
@@ -125,7 +125,7 @@ class Scriptable(DBOFacet):
     script_vars = DBOField({})
     shadow_chains = AutoField({})
 
-    def on_loaded(self):
+    def _on_loaded(self):
         chains = defaultdict(list)
         for shadow_ref in self.shadow_refs:
             if shadow_ref.script.code:
