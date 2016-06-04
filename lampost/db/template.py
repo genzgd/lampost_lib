@@ -13,6 +13,7 @@ class Template(metaclass=CoreMeta):
         instance = self.instance_cls()
         instance.template = self
         instance.template_key = self.dbo_key
+        instance._on_loaded()
         self.config_instance(instance, owner)
         return instance
 
