@@ -1,4 +1,5 @@
 import logging
+import importlib
 
 from lampost.di.resource import register
 
@@ -7,12 +8,12 @@ log = logging.getLogger(__name__)
 
 def select_json():
     try:
-        ujson = __import__('ujson')
+        ujson = importlib.import_module('ujson')
         register('json_decode', ujson.decode)
         register('json_encode', UJsonEncoder(ujson.encode).encode)
         log.info("Selected ujson JSON library")
     except ImportError:
-        json = __import__('json')
+        json = importlib.import_module('json')
         register('json_decode', json.JSONDecoder().decode)
         register('json_encode', json.JSONEncoder().encode)
         log.info("Defaulted to standard JSON library")
