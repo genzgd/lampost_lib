@@ -3,7 +3,8 @@ import itertools
 
 from lampost.di.resource import Injected, module_inject
 from lampost.gameops import target_gen
-from lampost.meta.auto import AutoField, AutoAttrInit
+from lampost.meta.auto import AutoField
+from lampost.meta.core import CoreMeta
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -124,7 +125,7 @@ class ActionError(ClientError):
         super().__init__(msg, display)
 
 
-class ActionProvider(AutoAttrInit):
+class ActionProvider(metaclass=CoreMeta):
     instance_providers = AutoField([])
 
     @classmethod

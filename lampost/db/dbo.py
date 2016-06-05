@@ -1,5 +1,5 @@
 from lampost.di.resource import Injected, module_inject
-from lampost.meta.auto import AutoAttrInit
+from lampost.meta.core import CoreMeta
 from lampost.util.classes import call_mro
 from lampost.db import dbofield
 from lampost.db.registry import set_dbo_class, get_dbo_class
@@ -11,7 +11,7 @@ db = Injected('datastore')
 module_inject(__name__)
 
 
-class DBOFacet(AutoAttrInit):
+class DBOFacet(metaclass=CoreMeta):
     dbo_fields = {}
 
     @classmethod
@@ -34,7 +34,7 @@ class DBOFacet(AutoAttrInit):
                     if old_attr and old_attr.default == attr.default:
                         log.warn("Unnecessary override of attr {} in class {}", name, cls.__name__)
                     elif old_attr and old_attr.default:
-                        log.nfo("Overriding default value of attr{} in class {}", name, cls.__name__)
+                        log.info("Overriding default value of attr{} in class {}", name, cls.__name__)
                     cls.dbo_fields[name] = attr
 
     @classmethod

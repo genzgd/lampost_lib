@@ -1,6 +1,7 @@
 class CoreMeta(type):
 
     def __init__(cls, name, bases, new_attrs):
+        cls._meta_init_attrs(new_attrs)
         cls._extend(bases, "_cls_inits", "_cls_init")
         for cls_init in cls._cls_inits:
             cls_init(cls, name, bases, new_attrs)
@@ -9,6 +10,14 @@ class CoreMeta(type):
             mixin_init = getattr(mixin_init, "__func__", mixin_init)
             if mixin_init not in cls._cls_inits:
                 cls._cls_inits.append(mixin_init)
+
+    @staticmethod
+    def _meta_init_attrs(new_attrs):
+        for name, attr in new_attrs.items():
+            try:
+                attr._meta_init(name)
+            except AttributeError:
+                pass
 
     def _extend(cls, bases, cls_field, attr_name):
         new_field = []

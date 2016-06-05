@@ -1,22 +1,5 @@
 import copy
 
-from lampost.meta.core import CoreMeta
-
-
-class AutoAttrInit(metaclass=CoreMeta):
-
-    @classmethod
-    def _cls_init(cls, name, bases, new_attrs):
-        cls._meta_init_attrs(new_attrs)
-
-    @classmethod
-    def _meta_init_attrs(cls, new_attrs):
-        for name, attr in new_attrs.items():
-            try:
-                attr.meta_init(name)
-            except AttributeError:
-                pass
-
 
 class AutoField():
     field = None
@@ -50,7 +33,7 @@ class AutoField():
         instance.__dict__[self.field] = new_value
         return new_value
 
-    def meta_init(self, field):
+    def _meta_init(self, field):
         self.field = field
 
 

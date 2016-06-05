@@ -19,7 +19,7 @@ class DBOField(AutoField):
         self.required = required
         self.dbo_class_id = dbo_class_id
 
-    def meta_init(self, field):
+    def _meta_init(self, field):
         self.field = field
         self._hydrate_func = get_hydrate_func(load_any, self.default, self.dbo_class_id)
         self.dto_value = value_transform(to_dto_repr, self.default, field, self.dbo_class_id, for_json=True)
@@ -65,7 +65,7 @@ class DBOTField():
     def __set__(self, instance, value):
         log.error("Illegally setting value {} of DBOTField {}", value, self.field, stack_info=True)
 
-    def meta_init(self, field):
+    def _meta_init(self, field):
         self.field = field
 
 
@@ -126,7 +126,7 @@ class DBOLField(DBOField):
     def _save_value(self, instance):
         return self._save_ref(instance, instance.__dict__.get(self.field, self.default))
 
-    def meta_init(self, field):
+    def _meta_init(self, field):
         self.field = field
         self._hydrate_func = get_hydrate_func(load_keyed, self.default, self.dbo_class_id)
         self._save_ref = get_hydrate_func(save_keyed, self.default, self.dbo_class_id)
