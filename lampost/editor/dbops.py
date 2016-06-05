@@ -19,7 +19,7 @@ def rebuild_indexes(dbo_cls):
     for dbo_id in db.fetch_set_keys(dbo_cls.dbo_set_key):
         try:
             dbo_key = '{}:{}'.format(dbo_cls.dbo_key_type, dbo_id)
-            dbo_dict = db.load_raw(dbo_key)
+            dbo_dict = db.load_value(dbo_key)
             for ix_name in dbo_cls.dbo_indexes:
                 ix_value = dbo_dict.get(ix_name)
                 if ix_value is not None and ix_value != '':

@@ -47,32 +47,6 @@ class RedisStore:
         self.save_object(dbo, update_timestamp)
         return dbo
 
-    def save_object(self, dbo, update_timestamp=False, autosave=False):
-        if update_timestamp:
-            dbo.dbo_ts = int(time.time())
-        if dbo.dbo_indexes:
-            self._update_indexes(dbo)
-        self._clear_old_refs(dbo)
-        save_root, new_refs = dbo.to_db_value()
-        self.redis.set(dbo.dbo_key, json_encode(save_root))
-        if new_refs:
-            self._set_new_refs(dbo, new_refs)
-        log.debug("db object {} {}saved", dbo.dbo_key, "auto" if autosave else "")
-        self._object_map[dbo.dbo_key] = dbo
-        return dbo
-
-    def save_raw(self, key, raw):
-        self.redis.set(key, json_encode(raw))
-
-    def load_raw(self, key, default=None):
-        json = self.redis.get(key)
-        if json:
-            return json_decode(json)
-        return default
-
-    def load_cached(self, dbo_key):
-        return self._object_map.get(dbo_key)
-
     def load_object(self, dbo_key, key_type=None, silent=False):
         if key_type:
             try:
@@ -95,50 +69,21 @@ class RedisStore:
             if not silent:
                 log.warn("Failed to find {} in database", dbo_key)
             return
-        return self.load_from_json(json_str, key_type, dbo_id)
+        return self._json_to_obj(json_str, key_type, dbo_id)
 
-    def load_from_json(self, json_str, key_type, dbo_id):
-        dbo_dict = json_decode(json_str)
-        dbo = get_mixed_type(key_type, dbo_dict.get('mixins'))()
-        dbo.dbo_id = dbo_id
+    def save_object(self, dbo, update_timestamp=False, autosave=False):
+        if update_timestamp:
+            dbo.dbo_ts = int(time.time())
+        if dbo.dbo_indexes:
+            self._update_indexes(dbo)
+        self._clear_old_refs(dbo)
+        save_root, new_refs = dbo.to_db_value()
+        self.redis.set(dbo.dbo_key, json_encode(save_root))
+        if new_refs:
+            self._set_new_refs(dbo, new_refs)
+        log.debug("db object {} {}saved", dbo.dbo_key, "auto" if autosave else "")
         self._object_map[dbo.dbo_key] = dbo
-        dbo.hydrate(dbo_dict)
         return dbo
-
-    def object_exists(self, obj_type, obj_id):
-        return self.redis.exists('{}:{}'.format(obj_type, obj_id))
-
-    def load_object_set(self, dbo_class, set_key=None):
-        dbo_class = get_dbo_class(getattr(dbo_class, 'dbo_key_type', dbo_class))
-        key_type = dbo_class.dbo_key_type
-        if not set_key:
-            set_key = dbo_class.dbo_set_key
-        results = set()
-        keys = deque()
-        pipeline = self.redis.pipeline()
-        for key in self.fetch_set_keys(set_key):
-            dbo_key = ':'.join([key_type, key])
-            try:
-                results.add(self._object_map[dbo_key])
-            except KeyError:
-                keys.append(key)
-                pipeline.get(dbo_key)
-        for dbo_id, json_str in zip(keys, pipeline.execute()):
-            if json_str:
-                obj = self.load_from_json(json_str, key_type, dbo_id)
-                if obj:
-                    results.add(obj)
-                continue
-            log.warn("Removing missing object from set {}", set_key)
-            self.delete_set_key(set_key, dbo_id)
-        return results
-
-    def delete_object_set(self, dbo_class, set_key=None):
-        if not set_key:
-            set_key = dbo_class.dbo_set_key
-        for dbo in self.load_object_set(dbo_class, set_key):
-            self.delete_object(dbo)
-        self.delete_key(set_key)
 
     def update_object(self, dbo, dbo_dict):
         dbo.hydrate(dbo_dict)
@@ -161,6 +106,44 @@ class RedisStore:
         log.debug("object deleted: {}", key)
         self.evict_object(dbo)
 
+    def load_cached(self, dbo_key):
+        return self._object_map.get(dbo_key)
+
+    def object_exists(self, obj_type, obj_id):
+        return self.redis.exists('{}:{}'.format(obj_type, obj_id))
+
+    def load_object_set(self, dbo_class, set_key=None):
+        dbo_class = get_dbo_class(getattr(dbo_class, 'dbo_key_type', dbo_class))
+        key_type = dbo_class.dbo_key_type
+        if not set_key:
+            set_key = dbo_class.dbo_set_key
+        results = set()
+        keys = deque()
+        pipeline = self.redis.pipeline()
+        for key in self.fetch_set_keys(set_key):
+            dbo_key = ':'.join([key_type, key])
+            try:
+                results.add(self._object_map[dbo_key])
+            except KeyError:
+                keys.append(key)
+                pipeline.get(dbo_key)
+        for dbo_id, json_str in zip(keys, pipeline.execute()):
+            if json_str:
+                obj = self._json_to_obj(json_str, key_type, dbo_id)
+                if obj:
+                    results.add(obj)
+                continue
+            log.warn("Removing missing object from set {}", set_key)
+            self.delete_set_key(set_key, dbo_id)
+        return results
+
+    def delete_object_set(self, dbo_class, set_key=None):
+        if not set_key:
+            set_key = dbo_class.dbo_set_key
+        for dbo in self.load_object_set(dbo_class, set_key):
+            self.delete_object(dbo)
+        self.delete_key(set_key)
+
     def reload_object(self, dbo_key):
         dbo = self._object_map.get(dbo_key)
         if dbo:
@@ -173,6 +156,15 @@ class RedisStore:
 
     def evict_object(self, dbo):
         self._object_map.pop(dbo.dbo_key, None)
+
+    def load_value(self, key, default=None):
+        json = self.redis.get(key)
+        if json:
+            return json_decode(json)
+        return default
+
+    def save_value(self, key, value):
+        self.redis.set(key, json_encode(value))
 
     def fetch_set_keys(self, set_key):
         return self.redis.smembers(set_key)
@@ -230,6 +222,14 @@ class RedisStore:
 
     def trim_db_list(self, list_id, start, end):
         return self.redis.ltrim(list_id, start, end)
+
+    def _json_to_obj(self, json_str, key_type, dbo_id):
+        dbo_dict = json_decode(json_str)
+        dbo = get_mixed_type(key_type, dbo_dict.get('mixins'))()
+        dbo.dbo_id = dbo_id
+        dbo.hydrate(dbo_dict)
+        self._object_map[dbo.dbo_key] = dbo
+        return dbo
 
     def _update_indexes(self, dbo):
         try:

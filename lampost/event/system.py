@@ -17,8 +17,8 @@ maintenance_lc = None
 
 @on_app_start
 def _start():
-    dispatcher.current_pulse = db.load_raw('event_pulse', 0)
-    dispatcher.register_p(lambda: db.save_raw('event_pulse', dispatcher.current_pulse), 100)
+    dispatcher.current_pulse = db.load_value('event_pulse', 0)
+    dispatcher.register_p(lambda: db.save_value('event_pulse', dispatcher.current_pulse), 100)
     _start_heartbeat()
 
 

@@ -10,7 +10,7 @@ system_accounts = []
 imm_levels = {}
 
 
-@on_app_start(500)
+@on_app_start(priority=500)
 @on_config_change
 def _init():
     global imm_levels
