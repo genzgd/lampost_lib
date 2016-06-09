@@ -127,8 +127,8 @@ class ChildList(SessionHandler):
 
 
 class ChildrenEditor(Editor):
-    def initialize(self, class_id, imm_level='builder'):
-        super().initialize(class_id, imm_level)
+    def initialize(self, key_type, imm_level='builder'):
+        super().initialize(key_type, imm_level)
         self.parent_type = self.obj_class.dbo_parent_type
 
     def _pre_create(self):
