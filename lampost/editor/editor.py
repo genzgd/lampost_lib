@@ -20,25 +20,26 @@ class Editor(MethodHandler):
         super().prepare()
         perm.check_perm(self.player, self)
 
-    def initialize(self, obj_class, imm_level='builder'):
-        self.obj_class = get_dbo_class(getattr(obj_class, 'dbo_key_type', obj_class))
+    def initialize(self, key_type, imm_level='builder', create_level=None):
+        self.key_type = key_type
+        self.obj_class = get_dbo_class(key_type)
         self.imm_level = imm_level
-        self.dbo_key_type = self.obj_class.dbo_key_type
+        self.create_level = create_level if create_level else imm_level
         if hasattr(self.obj_class, 'dbo_children_types'):
             self.children_types = self.obj_class.dbo_children_types
 
     def list(self):
-        return [self._edit_dto(obj) for obj in db.load_object_set(self.obj_class) if obj.can_read(self.player)]
+        return [self._edit_dto(obj) for obj in db.load_object_set(self.key_type) if obj.can_read(self.player)]
 
     def create(self):
         self.raw['owner_id'] = self.session.player.dbo_id
         self._pre_create()
-        new_obj = db.create_object(self.obj_class, self.raw)
+        new_obj = db.create_object(self.key_type, self.raw)
         self._post_create(new_obj)
         return edit_update.publish_edit('create', new_obj, self.session)
 
     def delete_obj(self):
-        del_obj = db.load_object(self.raw['dbo_id'], self.obj_class)
+        del_obj = db.load_object(self.raw['dbo_id'], self.key_type)
         if not del_obj:
             raise DataError('Gone: Object with key {} does not exist'.format(self.raw['dbo_id']))
         perm.check_perm(self.player, del_obj)
@@ -57,7 +58,7 @@ class Editor(MethodHandler):
         edit_update.publish_edit('delete', del_obj, self.session)
 
     def update(self):
-        existing_obj = db.load_object(self.raw['dbo_id'], self.obj_class)
+        existing_obj = db.load_object(self.raw['dbo_id'], self.key_type)
         if not existing_obj:
             raise DataError("GONE:  Object with key {} no longer exists.".format(self.raw['dbo.id']))
         perm.check_perm(self.player, existing_obj)
@@ -69,12 +70,11 @@ class Editor(MethodHandler):
         return edit_update.publish_edit('update', existing_obj, self.session)
 
     def metadata(self):
-        new_object_cls = get_dbo_class(self.dbo_key_type)
         return {'perms': self._permissions(), 'parent_type': self.parent_type, 'children_types': self.children_types,
-                'new_object': new_object_cls.new_dto()}
+                'new_object': self.obj_class.new_dto()}
 
     def test_delete(self):
-        return list(db.fetch_set_keys('{}:{}:holders'.format(self.dbo_key_type, self.raw['dbo_id'])))
+        return list(db.fetch_set_keys('{}:{}:holders'.format(self.key_type, self.raw['dbo_id'])))
 
     def _edit_dto(self, dbo):
         dto = dbo.edit_dto
@@ -101,13 +101,13 @@ class Editor(MethodHandler):
         pass
 
     def _permissions(self):
-        return {'add': True}
+        return {'add': perm.has_perm(self.player, self.create_level)}
 
 
 class ChildList(SessionHandler):
-    def initialize(self, obj_class):
-        self.obj_class = get_dbo_class(getattr(obj_class, 'dbo_key_type', obj_class))
-        self.dbo_key_type = self.obj_class.dbo_key_type
+    def initialize(self, key_type):
+        self.key_type = key_type
+        self.obj_class = get_dbo_class(key_type)
         self.parent_type = self.obj_class.dbo_parent_type
 
     def main(self, parent_id):
@@ -116,10 +116,10 @@ class ChildList(SessionHandler):
             self.send_error(404)
         if not parent.can_read(self.player):
             return []
-        set_key = '{}_{}s:{}'.format(self.parent_type, self.dbo_key_type, parent_id)
+        set_key = '{}_{}s:{}'.format(self.parent_type, self.key_type, parent_id)
         can_write = parent.can_write(self.player)
         child_list = []
-        for child in db.load_object_set(self.obj_class, set_key):
+        for child in db.load_object_set(self.key_type, set_key):
             child_dto = child.edit_dto
             child_dto['can_write'] = can_write
             child_list.append(child_dto)
@@ -127,8 +127,8 @@ class ChildList(SessionHandler):
 
 
 class ChildrenEditor(Editor):
-    def initialize(self, obj_class, imm_level='builder'):
-        super().initialize(obj_class, imm_level)
+    def initialize(self, class_id, imm_level='builder'):
+        super().initialize(class_id, imm_level)
         self.parent_type = self.obj_class.dbo_parent_type
 
     def _pre_create(self):

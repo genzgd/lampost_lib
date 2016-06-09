@@ -11,7 +11,6 @@ def call_mro(obj, func_name, *args, **kwargs):
 
 
 def subclasses(cls):
-    yield cls
     for subclass in cls.__subclasses__():
         yield subclass
         for sub_sub in subclasses(subclass):
