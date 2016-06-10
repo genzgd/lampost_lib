@@ -51,7 +51,7 @@ class MessageSender(Thread):
 
     def _send_message(self, addresses, message):
         try:
-            self.server.sendmail(self.email_sender.email_address, addresses, message)
+            self.server.sendmail(email_sender.email_address, addresses, message)
         except SMTPHeloError:
             log.exception("Helo error sending email")
         except SMTPRecipientsRefused:
@@ -65,7 +65,7 @@ class MessageSender(Thread):
         self.server = SMTP("smtp.gmail.com", 587)
         self.server.ehlo()
         self.server.starttls()
-        self.server.login(self.email_sender.email_address, self.email_sender.email_password)
+        self.server.login(email_sender.email_address, email_sender.email_password)
 
 
 class EmailWrapper():
