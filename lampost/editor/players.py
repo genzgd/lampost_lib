@@ -15,7 +15,7 @@ module_inject(__name__)
 
 @on_app_start
 def _start():
-    ev.register('imm_level_change', imm_level_change)
+    ev.register('imm_update', imm_update)
 
 
 class EditorImmortal():
@@ -29,7 +29,7 @@ class EditorImmortal():
         return False
 
 
-def imm_level_change(player, old_level, session=None):
+def imm_update(player, old_level, session=None):
     immortal = EditorImmortal(player)
     if not old_level and player.imm_level:
         update_type = 'create'
