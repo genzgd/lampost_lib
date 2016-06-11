@@ -1,26 +1,25 @@
+import logging
+
 from lampost.di import resource, config
 from lampost.db.redisstore import RedisStore
 from lampost.db import dbconfig
 from lampost.util.logging import LogFactory
 from lampost.util import json
 
-resource.m_requires(__name__, 'log')
-
-
-def _prepare():
-    resource.register('log', LogFactory())
-    json.select_json()
+resource.register('log', LogFactory())
+json.select_json()
+log = logging.getLogger(__name__)
 
 
 def reset_config(args):
-    _prepare()
-    datastore = resource.register('datastore', RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw), True)
+    db = RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw)
+    resource.register('datastore', db)
     config_id = args.config_id
-    existing = datastore.load_object(config_id, dbconfig.Config)
+    existing = db.load_object(config_id, dbconfig.Config)
     if not existing:
         print("Existing configuration does not exist, try lampost_setup")
         return
-    datastore.delete_object(existing)
+    db.delete_object(existing)
 
     try:
         config_yaml = config.load_yaml(args.config_dir)
@@ -29,8 +28,8 @@ def reset_config(args):
             return
         db_config = dbconfig.create(config_id, config_yaml, True)
     except Exception:
-        exception("Failed to create configuration from yaml")
-        datastore.save_object(existing)
+        log.exception("Failed to create configuration from yaml")
+        db.save_object(existing)
         print("Exception creating configuration from yaml.")
         return
     config.activate(db_config.section_values)

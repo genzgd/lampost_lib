@@ -42,6 +42,9 @@ class SessionHandler(RequestHandler):
             self.write(json_encode(result))
         self.finish()
 
+    def data_received(self, chunk):
+        log.info("Unexpected stream receive")
+
     def prepare(self):
         self.session = sm.get_session(self.request.headers.get('X-Lampost-Session'))
         if not self.session:

@@ -2,6 +2,7 @@ from lampost.di.resource import Injected, module_inject
 from lampost.db.registry import get_dbo_class
 from lampost.db.exceptions import DataError
 from lampost.server.handlers import MethodHandler, SessionHandler
+from lampost.util.lputil import PermError
 
 log = Injected('log')
 db = Injected('datastore')
@@ -32,6 +33,8 @@ class Editor(MethodHandler):
         return [self._edit_dto(obj) for obj in db.load_object_set(self.key_type) if obj.can_read(self.player)]
 
     def create(self):
+        if not self._permissions()['add']:
+            raise PermError
         self.raw['owner_id'] = self.session.player.dbo_id
         self._pre_create()
         new_obj = db.create_object(self.key_type, self.raw)

@@ -83,7 +83,7 @@ def _check_friends(player):
     users = [db.load_object(user_id, User) for user_id in notify_user_ids]
     if users:
         email.send_targeted_email("{} Login".format(player.name),
-                                         "Your friend {} just logged into {}.".format(player.name, lampost_title), users)
+                                  "Your friend {} just logged into {}.".format(player.name, lampost_title.value), users)
 
 
 def _delete_player(player_id):

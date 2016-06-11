@@ -1,5 +1,6 @@
 from tornado.web import RequestHandler
 
+from lampost.di.config import config_value
 from lampost.server.handlers import SessionHandler
 from lampost.di.resource import Injected, module_inject
 from lampost.util.lputil import ClientError
@@ -18,12 +19,9 @@ module_inject(__name__)
 def editor_login(session):
     edit_perms = []
     player = session.player
-    if perm.has_perm(player, 'builder'):
-        edit_perms.extend(['build', 'mud'])
-    if perm.has_perm(player, 'admin'):
-        edit_perms.extend(['player'])
-    if perm.has_perm(player, 'supreme'):
-        edit_perms.extend(['admin', 'config'])
+    for perm_level, tab_ids in config_value('editor_tabs').items():
+        if perm.has_perm(player, perm_level):
+            edit_perms.extend(tab_ids)
     session.append({'editor_login': {'edit_perms': edit_perms, 'playerId': player.dbo_id, 'imm_level': player.imm_level,
                                      'playerName': player.name}})
     edit_update.register(session)
