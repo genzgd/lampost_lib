@@ -20,7 +20,7 @@ def set_dbo_class(class_id, dbo_class):
         if old_class:
             log.info("Overriding {} with {} as {}", cls_name(old_class), cls_name(dbo_class), class_id)
         else:
-            log.debug("Registering {} as {}", cls_name(dbo_class), class_id)
+            log.info("Registering {} as {}", cls_name(dbo_class), class_id)
         _dbo_registry[class_id] = dbo_class
 
     else:
