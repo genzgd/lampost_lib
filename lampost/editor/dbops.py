@@ -1,5 +1,6 @@
 import time
 
+from lampost.db.exceptions import DataError
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import load_yaml, activate
 from lampost.db.registry import get_dbo_class, _dbo_registry
@@ -13,7 +14,10 @@ module_inject(__name__)
 
 
 @admin_op
-def rebuild_indexes(dbo_cls):
+def rebuild_indexes(class_id):
+    dbo_cls = get_dbo_class(class_id)
+    if not dbo_cls:
+        raise DataError("Class not found")
     for ix_name in dbo_cls.dbo_indexes:
         db.delete_key('ix:{}:{}'.format(dbo_cls.dbo_key_type, ix_name))
     for dbo_id in db.fetch_set_keys(dbo_cls.dbo_set_key):

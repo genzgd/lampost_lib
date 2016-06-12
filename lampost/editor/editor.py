@@ -1,6 +1,9 @@
+import inspect
+
 from lampost.di.resource import Injected, module_inject
 from lampost.db.registry import get_dbo_class
 from lampost.db.exceptions import DataError
+from lampost.gameops.script import Shadow
 from lampost.server.handlers import MethodHandler, SessionHandler
 from lampost.util.lputil import PermError
 
@@ -74,7 +77,8 @@ class Editor(MethodHandler):
 
     def metadata(self):
         return {'perms': self._permissions(), 'parent_type': self.parent_type, 'children_types': self.children_types,
-                'new_object': self.obj_class.new_dto()}
+                'new_object': self.obj_class.new_dto(),
+                'shadows': [name for name, value in inspect.getmembers(self.obj_class) if isinstance(value, Shadow)]}
 
     def test_delete(self):
         return list(db.fetch_set_keys('{}:{}:holders'.format(self.key_type, self.raw['dbo_id'])))

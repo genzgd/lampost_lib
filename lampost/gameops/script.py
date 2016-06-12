@@ -49,14 +49,14 @@ def compile_script(script_hash, script_text, script_id):
 class Shadow:
     def __init__(self, func):
         self.func = func
-        self.name = func.__name__
+        self.func_name = func.__name__
         self.shadow_args = inspect.getargspec(func)
 
     def __get__(self, instance, owner=None):
         if instance is None:
             return self
         try:
-            return instance.__dict__[self.name]
+            return instance.__dict__[self.func_name]
         except KeyError:
             pass
         return self.create_chain(instance)
@@ -64,7 +64,7 @@ class Shadow:
     def create_chain(self, instance):
         shadow_funcs = []
         original_inserted = False
-        for shadow in instance.shadow_chains.get(self.name, []):
+        for shadow in instance.shadow_chains.get(self.func_name, []):
             shadow_locals = {}
             exec(shadow.script.code, self.func.__globals__, shadow_locals)
             shadow_func = next(iter(shadow_locals.values()))
@@ -82,7 +82,7 @@ class Shadow:
         else:
             bound_chain = create_chain(shadow_funcs).__get__(instance)
 
-        instance.__dict__[self.name] = bound_chain
+        instance.__dict__[self.func_name] = bound_chain
         return bound_chain
 
 
@@ -108,7 +108,7 @@ class ShadowScript(ChildDBO):
 
 class ShadowRef(ChildDBO):
     class_id = 'shadow_ref'
-    name = DBOField('', required=True)
+    func_name = DBOField('', required=True)
     priority = DBOField(0)
     script = DBOField(dbo_class_id='shadow_script', required=True)
 
@@ -129,7 +129,7 @@ class Scriptable(DBOFacet):
         chains = defaultdict(list)
         for shadow_ref in self.shadow_refs:
             if shadow_ref.script.code:
-                func_shadows = chains[shadow_ref.name]
+                func_shadows = chains[shadow_ref.func_name]
                 bisect.insort(func_shadows, shadow_ref)
         self.shadow_chains = chains
         self.load_scripts()
