@@ -50,7 +50,6 @@ class Shadow:
     def __init__(self, func):
         self.func = func
         self.func_name = func.__name__
-        self.shadow_args = inspect.getargspec(func)
 
     def __get__(self, instance, owner=None):
         if instance is None:

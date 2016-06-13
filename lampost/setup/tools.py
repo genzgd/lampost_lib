@@ -11,7 +11,7 @@ json.select_json()
 log = logging.getLogger(__name__)
 
 
-def reset_config(args):
+def reload_config(args):
     db = RedisStore(args.db_host, args.db_port, args.db_num, args.db_pw)
     resource.register('datastore', db)
     config_id = args.config_id
