@@ -5,8 +5,8 @@ from collections import defaultdict
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
-from lampost.db.dbo import ChildDBO, DBOFacet
-from lampost.db.dbofield import DBOField
+from lampost.db.dbo import ChildDBO, DBOFacet, CoreDBO
+from lampost.db.dbofield import DBOField, DBOLField, DBOCField
 
 log = Injected('log')
 ev = Injected('dispatcher')
@@ -23,10 +23,13 @@ def _start():
 def create_chain(funcs):
 
     def chained(self, *args, **kwargs):
-        last_return = None
-        for func in funcs:
-            last_return = func(self, *args, last_return=last_return, **kwargs)
-        return last_return
+        try:
+            last_return = None
+            for func in funcs:
+                last_return = func(self, *args, last_return=last_return, **kwargs)
+            return last_return
+        except Exception:
+            log.exception("Exception in user defined script")
     return chained
 
 
@@ -105,11 +108,11 @@ class ShadowScript(ChildDBO):
             log.info("Loading unapproved script {}", self.dbo_id)
 
 
-class ShadowRef(ChildDBO):
+class ShadowRef(CoreDBO):
     class_id = 'shadow_ref'
     func_name = DBOField('', required=True)
     priority = DBOField(0)
-    script = DBOField(dbo_class_id='shadow_script', required=True)
+    script = DBOLField(dbo_class_id='script', required=True)
 
     def __cmp__(self, other):
         if self.priority < other.priority:
@@ -120,8 +123,8 @@ class ShadowRef(ChildDBO):
 
 
 class Scriptable(DBOFacet):
-    shadow_refs = DBOField([], 'shadow_ref')
-    script_vars = DBOField({})
+    shadow_refs = DBOCField([], 'shadow_ref')
+    script_vars = DBOCField({})
     shadow_chains = AutoField({})
 
     def _on_loaded(self):
@@ -131,8 +134,11 @@ class Scriptable(DBOFacet):
                 func_shadows = chains[shadow_ref.func_name]
                 bisect.insort(func_shadows, shadow_ref)
         self.shadow_chains = chains
-        self.load_scripts()
+        try:
+            self.load_scripts()
+        except Exception:
+            log.exception("Exception on user defined 'load_scripts'")
 
     @Shadow
-    def load_scripts(self):
+    def load_scripts(self, *args, **kwargs):
         pass
