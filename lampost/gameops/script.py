@@ -1,5 +1,4 @@
 import bisect
-import inspect
 from collections import defaultdict
 
 from lampost.di.app import on_app_start

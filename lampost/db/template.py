@@ -1,9 +1,10 @@
+import inspect
 import logging
 
 from lampost.db.dbo import CoreDBO
 from lampost.meta.core import CoreMeta
-from lampost.db.registry import get_dbo_class
-from lampost.db.dbofield import DBOField, DBOTField
+from lampost.db.registry import get_dbo_class, set_instance_class
+from lampost.db.dbofield import DBOField, DBOTField, DBOCField
 
 log = logging.getLogger(__name__)
 
@@ -28,28 +29,19 @@ class TemplateInstance(CoreDBO):
 
     @classmethod
     def _mixin_init(cls, name, bases, new_attrs):
-        dbot_fields = getattr(cls, 'dbot_fields', {}).copy()
-        dbot_fields.update({name: attr for name, attr in new_attrs.items() if isinstance(attr, DBOTField)})
-        cls.dbot_fields = dbot_fields
-
-        if hasattr(cls, "template_id"):
-            cls._attach_template()
-
-    @classmethod
-    def _attach_template(cls):
-        template_cls = get_dbo_class(cls.template_id)
+        template_id = getattr(cls, "template_id", None)
+        if not template_id:
+            return
+        set_instance_class(template_id, cls)
+        template_cls = get_dbo_class(template_id)
         old_class = getattr(template_cls, 'instance_cls', None)
         if old_class:
-            existing_fields = old_class.dbot_fields.values()
             log.info("Overriding existing instance class {} with {} for template {}", old_class.__name__, cls.__name__,
-                     cls.template_id)
+                     template_id)
         else:
-            log.info("Initializing instance class {} for template {}", cls.__name__, cls.template_id)
-            existing_fields = ()
-        new_dbo_fields = {name: DBOField(*dbo_field.args, **dbo_field.kwargs) for name, dbo_field in
-                          cls.dbot_fields.items() if dbo_field not in existing_fields}
+            log.info("Initializing instance class {} for template {}", cls.__name__, template_id)
+        new_dbo_fields = {name: DBOField(*field.args, **field.kwargs) for name, field in inspect.getmembers(cls)
+                          if isinstance(field, (DBOTField, DBOCField))}
         template_cls.add_dbo_fields(new_dbo_fields)
         template_cls.instance_cls = cls
         cls.template_cls = template_cls
-
-

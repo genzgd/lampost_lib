@@ -71,9 +71,14 @@ class DBOTField():
 
 class DBOCField(DBOField, TemplateField):
     """
-    This class should be used in cloneable objects that do not have a separate template class.  It will pass
-    access to the original object if not overridden in the child object.
+    This class should be used in cloneable objects or templates.  It will pass access to the original object if
+    its value is not overridden in the child object.
     """
+
+    def __init__(self, *args, **kwargs):
+        self.args = args
+        self.kwargs = kwargs
+        super().__init__(*args, **kwargs)
 
     def check_default(self, value, instance):
         super().check_default(value, instance)

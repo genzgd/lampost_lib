@@ -136,3 +136,7 @@ class ActionProvider(metaclass=CoreMeta):
     @property
     def action_providers(self):
         return itertools.chain((getattr(self, func_name) for func_name in self.class_providers), self.instance_providers)
+
+    def dynamic_action(self, func, verbs=None):
+        action = make_action(func, verbs)
+        self.instance_providers.append(action)

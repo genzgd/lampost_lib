@@ -8,23 +8,20 @@ log = logging.getLogger(__name__)
 
 _dbo_registry = {}
 _mixed_registry = {}
-
-
-def check_dbo_class(class_id):
-    return _dbo_registry.get(class_id)
+_instance_registry = {}
 
 
 def set_dbo_class(class_id, dbo_class):
-    if isinstance(class_id, str):
-        old_class = check_dbo_class(class_id)
-        if old_class:
-            log.info("Overriding {} with {} as {}", cls_name(old_class), cls_name(dbo_class), class_id)
-        else:
-            log.info("Registering {} as {}", cls_name(dbo_class), class_id)
-        _dbo_registry[class_id] = dbo_class
-
+    old_class = _dbo_registry.get(class_id)
+    if old_class:
+        log.info("Overriding {} with {} as {}", cls_name(old_class), cls_name(dbo_class), class_id)
     else:
-        log.warn("Attempting to register invalid class_id {}", class_id)
+        log.info("Registering {} as {}", cls_name(dbo_class), class_id)
+    _dbo_registry[class_id] = dbo_class
+
+
+def set_instance_class(template_id, instance_class):
+    _instance_registry[template_id] = instance_class
 
 
 def get_dbo_class(class_id):
@@ -54,3 +51,7 @@ def dbo_types(cls):
 
 def implementors(base_class):
     return [(key, value) for key, value in _dbo_registry.items() if base_class != value and base_class in inspect.getmro(value)]
+
+
+def instance_implementors(base_class):
+    return [(key, value) for key, value in _instance_registry.items() if base_class != value and base_class in inspect.getmro(value)]
