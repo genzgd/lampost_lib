@@ -28,7 +28,7 @@ class TemplateInstance(CoreDBO):
     template = None
 
     @classmethod
-    def _mixin_init(cls, name, bases, new_attrs):
+    def _mixin_init(cls, *_):
         template_id = getattr(cls, "template_id", None)
         if not template_id:
             return

@@ -31,10 +31,8 @@ class DBOFacet(metaclass=CoreMeta):
                 if old_attr == attr:
                     log.warn("Overriding duplicate attr {} in class {}", name, cls.__name__)
                 else:
-                    if old_attr and old_attr.default == attr.default:
-                        log.warn("Unnecessary override of attr {} in class {}", name, cls.__name__)
-                    elif old_attr and old_attr.default:
-                        log.info("Overriding default value of attr{} in class {}", name, cls.__name__)
+                    if old_attr and old_attr.default != attr.default:
+                        log.info("Overriding default value of attr {} in class {}", name, cls.__name__)
                     cls.dbo_fields[name] = attr
 
     @classmethod
