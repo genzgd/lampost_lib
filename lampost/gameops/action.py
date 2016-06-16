@@ -125,6 +125,17 @@ class ActionError(ClientError):
         super().__init__(msg, display)
 
 
+class InstanceAction:
+    def __init__(self, func, owner, verbs=None):
+        self.func = func
+        self.owner = owner
+        make_action(self, verbs, target_class="action_owner")
+
+    def __call__(self, **kwargs):
+        kwargs['owner'] = self.owner
+        return self.func(**kwargs)
+
+
 class ActionProvider(metaclass=CoreMeta):
     instance_providers = AutoField([])
 
@@ -138,5 +149,7 @@ class ActionProvider(metaclass=CoreMeta):
         return itertools.chain((getattr(self, func_name) for func_name in self.class_providers), self.instance_providers)
 
     def dynamic_action(self, func, verbs=None):
-        action = make_action(func, verbs)
+        if not verbs:
+            verbs = func.__name__
+        action = InstanceAction(func, self, verbs)
         self.instance_providers.append(action)

@@ -80,17 +80,20 @@ class DBOCField(DBOField, TemplateField):
         self.kwargs = kwargs
         super().__init__(*args, **kwargs)
 
+
     def check_default(self, value, instance):
-        super().check_default(value, instance)
+        if self.field not in instance.__dict__:
+            raise KeyError
         try:
             template_value = getattr(instance.template, self.field)
-        except AttributeError:
-            return
-        if hasattr(template_value, 'cmp_value'):
-            if value == template_value.cmp_value:
+            if hasattr(template_value, 'cmp_value'):
+                if value == template_value.cmp_value:
+                    raise KeyError
+            elif value == template_value:
                 raise KeyError
-        elif value == template_value:
-            raise KeyError
+        except AttributeError:
+            pass
+        super().check_default(value, instance)
 
 
 class DBOLField(DBOField):
@@ -257,7 +260,9 @@ def load_any(class_id, dbo_owner, dto_repr):
     if template_key:
         template = db.load_object(template_key)
         if template:
-            return template.create_instance(dbo_owner).hydrate(dto_repr)
+            instance = template.get_instance().hydrate(dto_repr)
+            template.config_instance(instance, dbo_owner)
+            return instance
         else:
             log.warn("Missing template for template_key {}", template_key)
             return

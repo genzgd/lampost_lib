@@ -66,6 +66,9 @@ class CoreDBO(DBOFacet):
         self.on_loaded()
         return self
 
+    def rehydrate(self):
+        return self.hydrate(self.save_value)
+
     def clone(self):
         clone = self.__class__()
         if hasattr(self, 'dbo_id'):

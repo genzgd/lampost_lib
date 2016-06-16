@@ -72,6 +72,10 @@ class Editor(MethodHandler):
             existing_obj.change_owner(self.raw['owner_id'])
         db.update_object(existing_obj, self.raw)
         self._post_update(existing_obj)
+        for holder_key in db.fetch_set_keys('{}:holders'.format(existing_obj.dbo_key)):
+            cached = db.load_cached(holder_key)
+            if cached:
+                cached.rehydrate()
         return edit_update.publish_edit('update', existing_obj, self.session)
 
     def metadata(self):

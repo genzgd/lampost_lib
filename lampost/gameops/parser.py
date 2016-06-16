@@ -77,7 +77,9 @@ def match_filter(func):
 
 def capture_index(target_key):
     try:
-        return int(target_key[-1]) - 1, target_key[:-1]
+        ix = int(target_key[-1]),
+        if ix > 0:
+            return ix -1, target_key[:-1]
     except (TypeError, IndexError):
         pass
     except ValueError:

@@ -13,11 +13,15 @@ class Template(metaclass=CoreMeta):
     instance_cls = None
 
     def create_instance(self, owner=None):
+        instance = self.get_instance()
+        instance.on_loaded()
+        self.config_instance(instance, owner)
+        return instance
+
+    def get_instance(self):
         instance = self.instance_cls()
         instance.template = self
         instance.template_key = self.dbo_key
-        instance.on_loaded()
-        self.config_instance(instance, owner)
         return instance
 
     def config_instance(self, instance, owner):

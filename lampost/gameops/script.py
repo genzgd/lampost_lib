@@ -44,7 +44,7 @@ def compile_script(script_hash, script_text, script_id):
     except SyntaxError as err:
         err_str = "Syntax Error: {}  text:{}  line: {}  offset: {}".format(err.msg, err.text, err.lineno, err.offset)
     except BaseException as err:
-        err_str = "Script Error: {}".format(err.msg)
+        err_str = "Script Error: {}".format(err)
     return None, err_str
 
 
