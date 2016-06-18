@@ -22,12 +22,11 @@ AMBIGUOUS_COMMAND = "Ambiguous command"
 
 
 def all_actions(entity, verb):
-    actions = set(find_actions(verb, entity.my_actions))
+    actions = list(find_actions(verb, entity.current_actions))
     try:
-        actions.add(mud_actions[verb])
+        actions.append(mud_actions[verb])
     except KeyError:
         pass
-    actions.update(find_actions(verb, entity.env.action_providers))
     return actions
 
 
@@ -51,12 +50,17 @@ def find_targets(entity, target_key, target_class, action=None):
 
 class ActionMatch():
     target = None
+    targets = []
+    target_key = None
+    target_method = None
+    target_methods = []
+    target_index = 0
     quantity = None
     prep = None
     obj_key = None
-    target_key = None
     obj = None
-    target_method = None
+    object_method = None
+
     obj_method = None
 
     def __init__(self, action, verb, args):
@@ -76,9 +80,9 @@ def match_filter(func):
 
 def capture_index(target_key):
     try:
-        ix = int(target_key[-1]),
+        ix = int(target_key[-1])
         if ix > 0:
-            return ix -1, target_key[:-1]
+            return ix - 1, target_key[:-1]
     except (TypeError, IndexError):
         pass
     except ValueError:
@@ -131,14 +135,26 @@ class Parse:
                         pass
         raise ParseError(last_reason.format(**reject_format))
 
-    # noinspection PyArgumentList
     def parse(self):
         self._reject(MISSING_VERB)
         self.parse_targets()
         self.parse_objects()
-        if len(self._matches) > 1:
+        target_indexes = set()
+        target_matches = []
+        for match in self._matches:
+            target_indexes.add(match.target_index)
+            target_matches.extend([(match, target, ix) for ix, target in enumerate(match.targets)])
+        if target_indexes.__len__() > 1:
             raise ParseError(AMBIGUOUS_COMMAND)
-        match = self._matches[0]
+        target_ix = target_indexes.pop()
+        if target_matches:
+            match, match.target, method_ix = target_matches[target_ix]
+            del match.targets
+            if match.target_methods:
+                match.target_method = match.target_methods[method_ix]
+                del match.target_methods
+        else:
+            match = self._matches[0]
         return match.action, match.__dict__
 
     @match_filter
@@ -166,29 +182,31 @@ class Parse:
                 if not hasattr(action, 'self_object'):
                     return MISSING_PREP
         if target_class == 'args':
-            match.target = target_key
+            match.targets = [target_key]
             return
-        target_index, target_key = capture_index(target_key)
+        match.target_index, target_key = capture_index(target_key)
         if target_key:
-            targets = find_targets(self._entity, target_key, target_class, action)
-            try:
-                target = next(itertools.islice(targets, target_index, target_index + 1))
-            except StopIteration:
+            targets = list(find_targets(self._entity, target_key, target_class, action))
+            if not targets:
                 return ABSENT_TARGET
         elif hasattr(action, 'self_target'):
-            target = self._entity
+            targets = [self._entity]
         elif target_gen.env in target_class:
-            target = self._entity.env
+            targets = [self._entity.env]
         else:
             return MISSING_TARGET
-        if match.quantity and match.quantity > getattr(target, 'quantity', 0):
+        targets = [target for target in targets if
+                   not match.quantity or match.quantity <= getattr(target, 'quantity', 0)]
+        if not targets:
             return INSUFFICIENT_QUANTITY
         msg_class = getattr(match.action, 'msg_class', None)
         if msg_class:
-            match.target_method = getattr(target, msg_class, None)
-            if match.target_method is None:
+            target_methods = [tm for tm in ((target, getattr(target, msg_class, None)) for target in targets) if tm[1]]
+            if target_methods:
+                targets, match.target_methods = zip(*target_methods)
+            else:
                 return INVALID_TARGET
-        match.target = target
+        match.targets = targets
 
     @match_filter
     def parse_objects(self, match):
