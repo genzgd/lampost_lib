@@ -70,31 +70,6 @@ def obj_action(**kwargs):
     return decorator
 
 
-def add_action(action_set, action):
-    for verb in getattr(action, "verbs", []):
-        action_set[verb].add(action)
-    for sub_action in getattr(action, "action_providers", []):
-        add_action(action_set, sub_action)
-
-
-def add_actions(action_set, actions):
-    for action in actions:
-        add_action(action_set, action)
-
-
-def remove_action(action_set, action):
-    for verb in getattr(action, 'verbs', []):
-        verb_set = action_set.get(verb, None)
-        if verb_set:
-            verb_set.remove(action)
-            if not verb_set:
-                del action_set[verb]
-        else:
-            log.debug("Trying to remove non-existent action {}", verb)
-    for sub_action in getattr(action, 'action_providers', ()):
-        remove_action(action_set, sub_action)
-
-
 def find_actions(verb, action_set):
     for action in action_set:
         try:
@@ -104,11 +79,6 @@ def find_actions(verb, action_set):
             pass
         for sub_action in find_actions(verb, getattr(action, 'action_providers', [])):
             yield sub_action
-
-
-def remove_actions(action_set, actions):
-    for action in actions:
-        remove_action(action_set, action)
 
 
 def action_handler(func):

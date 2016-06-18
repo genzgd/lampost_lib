@@ -22,8 +22,7 @@ AMBIGUOUS_COMMAND = "Ambiguous command"
 
 
 def all_actions(entity, verb):
-    actions = {action for action in itertools.chain.from_iterable(
-        actions.get(verb, []) for actions in (entity.soul, entity.inven_actions))}
+    actions = set(find_actions(verb, entity.my_actions))
     try:
         actions.add(mud_actions[verb])
     except KeyError:
