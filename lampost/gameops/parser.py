@@ -141,37 +141,42 @@ class Parse:
             args = tuple(self._words[verb_size:])
             matches.extend([ActionMatch(action, verb, args) for action in primary_actions(self._entity, verb)])
         self._matches = self._entity.filter_actions(matches)
-        self.parse_targets()
-        self.parse_objects()
-        if self._matches:
-            return self._process_matches()
+        result = self._process_matches()
+        if result:
+            return result
         verb = self._words[0]
         args = tuple(self._words[1:])
         matches = [ActionMatch(action, verb, args) for action in abbrev_actions(self._entity, verb)]
         self._matches = self._entity.filter_actions(matches)
-        self.parse_targets()
-        self.parse_objects()
-        if self._matches:
-            return self._process_matches()
+        result = self._process_matches()
+        if result:
+            return result
         self._raise_error()
 
     def _process_matches(self):
-        target_indexes = set()
-        target_matches = []
-        for match in self._matches:
-            target_indexes.add(match.target_index)
-            target_matches.extend([(match, target, ix) for ix, target in enumerate(match.targets)])
-        if target_indexes.__len__() > 1:
-            raise ParseError(AMBIGUOUS_COMMAND)
-        target_ix = target_indexes.pop()
-        if target_matches:
-            match, match.target, method_ix = target_matches[target_ix]
+        self.parse_targets()
+        self.parse_objects()
+        if not self._matches:
+            return
+        match = self._matches[0]
+        if match.targets:
+            target_index = match.target_index
+            target_matches = [(match, target, ix) for ix, target in enumerate(match.targets)]
+            all_targets = set(match.targets)
+            for match in self._matches[1:]:
+                if not match.targets or match.target_index != target_index:
+                    raise ParseError(AMBIGUOUS_COMMAND)
+                target_matches.extend([(match, target, ix) for ix, target in enumerate(match.targets)])
+                all_targets.update(match.targets)
+            if len(all_targets) != len(target_matches):
+                raise ParseError(AMBIGUOUS_COMMAND)
+            match, match.target, method_ix = target_matches[target_index]
             del match.targets
             if match.target_methods:
                 match.target_method = match.target_methods[method_ix]
                 del match.target_methods
-        else:
-            match = self._matches[0]
+        elif len(self._matches) > 1:
+            raise ParseError(AMBIGUOUS_COMMAND)
         return match.action, match.__dict__
 
     @match_filter
@@ -218,7 +223,7 @@ class Parse:
             return INSUFFICIENT_QUANTITY
         msg_class = getattr(match.action, 'msg_class', None)
         if msg_class:
-            target_methods = [tm for tm in ((target, getattr(target, msg_class, None)) for target in targets) if tm[1]]
+            target_methods = [(target, getattr(target, msg_class)) for target in targets if hasattr(target, msg_class)]
             if target_methods:
                 targets, match.target_methods = zip(*target_methods)
             else:

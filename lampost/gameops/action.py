@@ -107,7 +107,7 @@ def _action_verbs(action):
 
 
 class ActionCache:
-    def __init__(self, allow_dupes=True):
+    def __init__(self):
         self._primary_map = defaultdict(list)
         self._abbrev_map = defaultdict(list)
 
@@ -116,6 +116,13 @@ class ActionCache:
 
     def abbrev(self, abbrev):
         return self._abbrev_map.get(abbrev, ())
+
+    def all_actions(self):
+        action_map = defaultdict(list)
+        for verb, actions in self._primary_map.items():
+            for action in actions:
+                action_map[action].append(verb)
+        return action_map
 
     def add(self, provider):
         try:

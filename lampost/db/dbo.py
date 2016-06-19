@@ -125,7 +125,7 @@ class CoreDBO(DBOFacet):
                 append(getattr(self, attr), attr)
         for field, dbo_field in sorted(self.dbo_fields.items(), key=lambda field_value: field_value[0]):
             try:
-                append(dbo_field.save_value(self), field)
+                append(dbo_field.dto_value(self), field)
             except KeyError:
                 pass
 

@@ -68,7 +68,7 @@ def env_items(target_key, entity, *_):
     return recursive_targets([item for item in entity.env.inven], target_key)
 
 
-defaults = [self, equip, inven, env, feature, env_living, env_items]
+defaults = [self, env, feature, env_living, env_items, equip, inven]
 
 
 def logged_in(target_key, *_):
