@@ -43,7 +43,7 @@ def find_extra_prep(prep, command):
 
 
 def find_extra(verb, used_args, command):
-    verb_len = len(verb)
+    verb_len = len(verb.split(' '))
     try:
         arg_len = len(used_args)
     except TypeError:

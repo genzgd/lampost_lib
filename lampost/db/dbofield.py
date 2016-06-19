@@ -138,7 +138,7 @@ class DBOLField(DBOField):
         self.field = field
         self._hydrate_func = get_hydrate_func(load_keyed, self.default, self.dbo_class_id)
         self._save_ref = get_hydrate_func(save_keyed, self.default, self.dbo_class_id)
-        self._set_value = value_transform(to_dbo_key, self.default, field, self.dbo_class_id)
+        self._set_value = set_transform(to_dto_repr, self.default, self.dbo_class_id)
 
 
 def get_hydrate_func(load_func, default, class_id):
@@ -173,6 +173,14 @@ def value_transform(trans_func, default, field, class_id, for_json=False):
         return None if value is None else trans_func(value, class_id)
 
     return simple
+
+
+def set_transform(trans_func, default, class_id):
+    if isinstance(default, list):
+        return lambda values: [trans_func(value, class_id) for value in values]
+    if isinstance(default, dict):
+        return lambda value_dict: {key: trans_func(value, class_id) for key, value in value_dict}
+    return lambda value: trans_func(value, class_id)
 
 
 def to_dto_repr(dbo, class_id):

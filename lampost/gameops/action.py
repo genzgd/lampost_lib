@@ -12,9 +12,10 @@ log = Injected('log')
 module_inject(__name__)
 
 
-def convert_verbs(verbs):
+def action_verbs(action):
+    verbs = getattr(action, 'verbs', ())
     if isinstance(verbs, str):
-        return [verbs]
+        return verbs,
     return verbs
 
 
@@ -99,13 +100,6 @@ class InstanceAction:
         return self.func(**kwargs)
 
 
-def _action_verbs(action):
-    verbs = getattr(action, 'verbs', ())
-    if isinstance(verbs, str):
-        return verbs,
-    return verbs
-
-
 class ActionCache:
     def __init__(self):
         self._primary_map = defaultdict(list)
@@ -131,8 +125,8 @@ class ActionCache:
         except TypeError:
             self._add_action(provider)
 
-    def add_unique(self, verbs, action):
-        for verb in verbs:
+    def add_unique(self, action):
+        for verb in action_verbs(action):
             if verb in self._primary_map:
                 log.error("Adding duplicate verb {} to unique action cache", verb)
             else:
@@ -142,7 +136,7 @@ class ActionCache:
                     self._abbrev_map[verb[:vl]].append(action)
 
     def _add_action(self, action):
-        for verb in _action_verbs(action):
+        for verb in action_verbs(action):
             self._primary_map[verb].append(action)
             if not ' ' in verb:
                 for vl in range(1, len(verb)):
@@ -158,7 +152,7 @@ class ActionCache:
             self._remove_action(provider)
 
     def _remove_action(self, action):
-        for verb in _action_verbs(action):
+        for verb in action_verbs(action):
             try:
                 self._primary_map[verb].remove(action)
             except ValueError:

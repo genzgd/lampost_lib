@@ -2,6 +2,7 @@ import itertools
 
 from lampost.gameops import target_gen
 from lampost.di.resource import Injected, module_inject
+from lampost.gameops.action import action_verbs
 from lampost.util.lputil import find_extra, ClientError
 
 log = Injected('log')
@@ -17,7 +18,7 @@ MISSING_PREP = "'{prep}' missing from command."
 INVALID_TARGET = "You can't {verb} {target}."
 INVALID_OBJECT = "You can't {verb} {target} {prep} {object}."
 INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
-AMBIGUOUS_COMMAND = "Ambiguous command"
+AMBIGUOUS_COMMAND = "Ambiguous command matches: {}"
 
 
 def primary_actions(entity, verb):
@@ -30,12 +31,6 @@ def abbrev_actions(entity, verb):
 
 def has_action(entity, action, verb):
     return action in primary_actions(entity, verb)
-
-
-def entity_actions(entity, words, search_func):
-    matches = []
-
-    return matches
 
 
 def find_targets(entity, target_key, target_class, action=None):
@@ -112,7 +107,7 @@ class Parse:
             if extra:
                 extra = extra.strip()
             reject_format['quantity'] = reject.quantity
-            reject_format['verb'] = ' '.join(reject.verb)
+            reject_format['verb'] = reject.verb
             reject_format['extra'] = extra
             reject_format['prep'] = reject.prep
             if extra and reject.prep:
@@ -153,6 +148,15 @@ class Parse:
             return result
         self._raise_error()
 
+    def _amb_error(self):
+        verbs = []
+        for match in self._matches:
+            for verb in action_verbs(match.action):
+                if verb.startswith(match.verb):
+                    verbs.append(verb)
+                    break
+        raise ParseError(AMBIGUOUS_COMMAND.format(', '.join(verbs)))
+
     def _process_matches(self):
         self.parse_targets()
         self.parse_objects()
@@ -165,18 +169,18 @@ class Parse:
             all_targets = set(match.targets)
             for match in self._matches[1:]:
                 if not match.targets or match.target_index != target_index:
-                    raise ParseError(AMBIGUOUS_COMMAND)
+                    self._amb_error()
                 target_matches.extend([(match, target, ix) for ix, target in enumerate(match.targets)])
                 all_targets.update(match.targets)
             if len(all_targets) != len(target_matches):
-                raise ParseError(AMBIGUOUS_COMMAND)
+                self._amb_error()
             match, match.target, method_ix = target_matches[target_index]
             del match.targets
             if match.target_methods:
                 match.target_method = match.target_methods[method_ix]
                 del match.target_methods
         elif len(self._matches) > 1:
-            raise ParseError(AMBIGUOUS_COMMAND)
+            raise self._amb_error()
         return match.action, match.__dict__
 
     @match_filter
@@ -192,7 +196,7 @@ class Parse:
             try:
                 match.quantity = int(match.args[0])
                 target_key = match.args[1:]
-            except ValueError:
+            except (IndexError, ValueError):
                 pass
         match.prep = getattr(action, 'prep', None)
         if match.prep:
