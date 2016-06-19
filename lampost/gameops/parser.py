@@ -2,7 +2,6 @@ import itertools
 
 from lampost.gameops import target_gen
 from lampost.di.resource import Injected, module_inject
-from lampost.gameops.action import find_actions
 from lampost.util.lputil import find_extra, ClientError
 
 log = Injected('log')
@@ -21,26 +20,21 @@ INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
 AMBIGUOUS_COMMAND = "Ambiguous command"
 
 
-def all_actions(entity, verb):
-    actions = list(find_actions(verb, entity.current_actions))
-    try:
-        actions.append(mud_actions[verb])
-    except KeyError:
-        pass
-    return actions
+def primary_actions(entity, verb):
+    return itertools.chain.from_iterable(cache.primary(verb) for cache in entity.current_actions)
+
+
+def abbrev_actions(entity, verb):
+    return itertools.chain.from_iterable(cache.abbrev(verb) for cache in entity.current_actions)
 
 
 def has_action(entity, action, verb):
-    return action in all_actions(entity, verb)
+    return action in primary_actions(entity, verb)
 
 
-def entity_actions(entity, command):
-    words = command.lower().split()
+def entity_actions(entity, words, search_func):
     matches = []
-    for verb_size in range(1, len(words) + 1):
-        verb = tuple(words[:verb_size])
-        args = tuple(words[verb_size:])
-        matches.extend([ActionMatch(action, verb, args) for action in all_actions(entity, verb)])
+
     return matches
 
 
@@ -95,19 +89,24 @@ def capture_index(target_key):
 
 
 class Parse:
-    def __init__(self, entity, command):
-        matches = entity_actions(entity, command)
-        matches = entity.filter_actions(matches)
-        self._entity = entity
-        self._matches = matches
-        self._command = command
+    _matches = []
 
-    def _reject(self, last_reason, reject=None):
-        if reject:
-            self._matches.remove(reject)
-        if self._matches:
-            return
+    def __init__(self, entity, command):
+        self._words = command.lower().split()
+        self._entity = entity
+        self._command = command
+        self._last_reject = None
+        self._last_reason = MISSING_VERB
+
+    def _reject(self, last_reason, reject):
+        self._matches.remove(reject)
+        self._last_reject = reject
+        self._last_reason = last_reason
+
+    def _raise_error(self):
         reject_format = {'command': self._command, 'verb': self._command.split(' ')[0]}
+        last_reason = self._last_reason
+        reject = self._last_reject
         if reject:
             extra = find_extra(reject.verb, 0, self._command)
             if extra:
@@ -136,9 +135,27 @@ class Parse:
         raise ParseError(last_reason.format(**reject_format))
 
     def parse(self):
-        self._reject(MISSING_VERB)
+        matches = []
+        for verb_size in range(1, len(self._words) + 1):
+            verb = ' '.join(self._words[:verb_size])
+            args = tuple(self._words[verb_size:])
+            matches.extend([ActionMatch(action, verb, args) for action in primary_actions(self._entity, verb)])
+        self._matches = self._entity.filter_actions(matches)
         self.parse_targets()
         self.parse_objects()
+        if self._matches:
+            return self._process_matches()
+        verb = self._words[0]
+        args = tuple(self._words[1:])
+        matches = [ActionMatch(action, verb, args) for action in abbrev_actions(self._entity, verb)]
+        self._matches = self._entity.filter_actions(matches)
+        self.parse_targets()
+        self.parse_objects()
+        if self._matches:
+            return self._process_matches()
+        self._raise_error()
+
+    def _process_matches(self):
         target_indexes = set()
         target_matches = []
         for match in self._matches:
@@ -241,8 +258,7 @@ def parse_actions(entity, command):
 
 
 def parse_chat(verb, command):
-    verb_str = " ".join(verb)
-    verb_ix = command.lower().index(verb_str) + len(verb_str)
+    verb_ix = command.lower().index(verb) + len(verb)
     return command[verb_ix:].strip()
 
 

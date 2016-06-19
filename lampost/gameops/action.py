@@ -1,5 +1,6 @@
 import inspect
 import itertools
+from collections import defaultdict
 
 from lampost.di.resource import Injected, module_inject
 from lampost.gameops import target_gen
@@ -12,23 +13,15 @@ module_inject(__name__)
 
 
 def convert_verbs(verbs):
-    results = set()
-
-    def add_verb(verb):
-        results.add(tuple(verb.split(' ')))
-    try:
-        add_verb(verbs)
-    except AttributeError:
-        for verb in verbs:
-            add_verb(verb)
-    return results
+    if isinstance(verbs, str):
+        return [verbs]
+    return verbs
 
 
 def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None,
                 obj_msg_class=None, obj_target_class=None, **kw_args):
     if verbs:
-        action.verbs = getattr(action, 'verbs', set())
-        action.verbs.update(convert_verbs(verbs))
+        action.verbs = verbs
 
     if msg_class:
         action.msg_class = msg_class
@@ -104,6 +97,73 @@ class InstanceAction:
     def __call__(self, **kwargs):
         kwargs['owner'] = self.owner
         return self.func(**kwargs)
+
+
+def _action_verbs(action):
+    verbs = getattr(action, 'verbs', ())
+    if isinstance(verbs, str):
+        return verbs,
+    return verbs
+
+
+class ActionCache:
+    def __init__(self, allow_dupes=True):
+        self._primary_map = defaultdict(list)
+        self._abbrev_map = defaultdict(list)
+
+    def primary(self, verb):
+        return self._primary_map.get(verb, ())
+
+    def abbrev(self, abbrev):
+        return self._abbrev_map.get(abbrev, ())
+
+    def add(self, provider):
+        try:
+            for action in provider:
+                self._add_action(action)
+        except TypeError:
+            self._add_action(provider)
+
+    def add_unique(self, verbs, action):
+        for verb in verbs:
+            if verb in self._primary_map:
+                log.error("Adding duplicate verb {} to unique action cache", verb)
+            else:
+                self._primary_map[verb] = (action,)
+            if not ' ' in verb:
+                for vl in range(1, len(verb)):
+                    self._abbrev_map[verb[:vl]].append(action)
+
+    def _add_action(self, action):
+        for verb in _action_verbs(action):
+            self._primary_map[verb].append(action)
+            if not ' ' in verb:
+                for vl in range(1, len(verb)):
+                    self._abbrev_map[verb[:vl]].append(action)
+        for provider in getattr(action, 'action_providers', ()):
+            self.add(provider)
+
+    def remove(self, provider):
+        try:
+            for action in provider:
+                self._remove_action(action)
+        except TypeError:
+            self._remove_action(provider)
+
+    def _remove_action(self, action):
+        for verb in _action_verbs(action):
+            try:
+                self._primary_map[verb].remove(action)
+            except ValueError:
+                log.warn("Removing {} from ActionCache that did not exist", action)
+            if ' ' not in verb:
+                for vl in range(1, len(verb)):
+                    try:
+                        self._abbrev_map[verb[:vl]].remove(action)
+                    except ValueError:
+                        log.warn("Removing {} from ActionCache abbrev that did not exist", action)
+        for provider in getattr(action, 'action_providers', ()):
+            self.remove(provider)
 
 
 class ActionProvider(metaclass=CoreMeta):
