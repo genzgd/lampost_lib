@@ -51,7 +51,8 @@ equip.absent_msg = "You don't have `{target}' equipped."
 
 
 def inven(key_type, target_key, entity, *_):
-    return recursive_targets(key_type, [eq for equip in entity.inven if not getattr(equip, 'current_slot', None)], target_key)
+    return recursive_targets(key_type, [equip for equip in entity.inven if not getattr(equip, 'current_slot', None)],
+                             target_key)
 inven.absent_msg = "You don't have `{target}'."
 
 
