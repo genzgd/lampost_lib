@@ -174,6 +174,9 @@ class Parse:
                 all_targets.update(match.targets)
             if len(all_targets) != len(target_matches):
                 self._amb_error()
+            if target_index >= len(target_matches):
+                self._reject(INVALID_TARGET, match)
+                return
             match, match.target, method_ix = target_matches[target_index]
             del match.targets
             if match.target_methods:
