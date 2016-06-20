@@ -33,8 +33,8 @@ def has_action(entity, action, verb):
     return action in primary_actions(entity, verb)
 
 
-def find_targets(entity, target_key, target_class, action=None):
-    return itertools.chain.from_iterable([target_func(target_key, entity, action) for target_func in target_class])
+def find_targets(key_type, entity, target_key, target_class, action=None):
+    return itertools.chain.from_iterable([target_func(key_type, target_key, entity, action) for target_func in target_class])
 
 
 class ActionMatch():
@@ -148,7 +148,7 @@ class Parse:
             return result
         self._raise_error()
 
-    def _amb_error(self):
+    def _ambiguous(self):
         verbs = []
         for match in self._matches:
             for verb in action_verbs(match.action):
@@ -169,21 +169,21 @@ class Parse:
             all_targets = set(match.targets)
             for match in self._matches[1:]:
                 if not match.targets or match.target_index != target_index:
-                    self._amb_error()
+                    self._ambiguous()
                 target_matches.extend([(match, target, ix) for ix, target in enumerate(match.targets)])
                 all_targets.update(match.targets)
-            if len(all_targets) != len(target_matches):
-                self._amb_error()
             if target_index >= len(target_matches):
                 self._reject(INVALID_TARGET, match)
                 return
+            if len(all_targets) != len(target_matches):
+                self._ambiguous()
             match, match.target, method_ix = target_matches[target_index]
             del match.targets
             if match.target_methods:
                 match.target_method = match.target_methods[method_ix]
                 del match.target_methods
         elif len(self._matches) > 1:
-            raise self._amb_error()
+            raise self._ambiguous()
         return match.action, match.__dict__
 
     @match_filter
@@ -215,9 +215,18 @@ class Parse:
             return
         match.target_index, target_key = capture_index(target_key)
         if target_key:
-            targets = list(find_targets(self._entity, target_key, target_class, action))
-            if not targets:
+            key_str = ' '.join(target_key)
+            found = list(find_targets('primary', self._entity, key_str, target_class, action))
+            if not found:
+                found = list(find_targets('abbrev', self._entity, key_str, target_class, action))
+            if not found:
                 return ABSENT_TARGET
+            seen = set()
+            targets = []
+            for target in found:
+                if target not in seen:
+                    targets.append(target)
+                    seen.add(target)
         elif hasattr(action, 'self_target'):
             targets = [self._entity]
         elif target_gen.env in target_class:
@@ -247,11 +256,16 @@ class Parse:
             return
         obj_index, obj_key = capture_index(match.obj_key)
         if obj_key:
-            objects = find_targets(self._entity, obj_key, obj_target_class)
+            key_str = ' '.join(obj_key)
+            objects = find_targets('primary', self._entity, key_str, obj_target_class)
             try:
                 obj = next(itertools.islice(objects, obj_index, obj_index + 1))
             except StopIteration:
-                return ABSENT_OBJECT
+                objects = find_targets('abbrev', self._entity, key_str, obj_target_class)
+                try:
+                    obj = next(itertools.islice(objects, obj_index, obj_index + 1))
+                except StopIteration:
+                    return ABSENT_OBJECT
         elif hasattr(match.action, 'self_object'):
             obj = self._entity
         else:
