@@ -125,6 +125,18 @@ class ActionCache:
         except TypeError:
             self._add_action(provider)
 
+    def remove(self, provider):
+        try:
+            for action in provider:
+                self._remove_action(action)
+        except TypeError:
+            self._remove_action(provider)
+
+    def refresh(self, provider):
+        self._primary_map.clear()
+        self._abbrev_map.clear()
+        self.add(provider)
+
     def add_unique(self, action):
         for verb in action_verbs(action):
             if verb in self._primary_map:
@@ -144,12 +156,7 @@ class ActionCache:
         for provider in getattr(action, 'action_providers', ()):
             self.add(provider)
 
-    def remove(self, provider):
-        try:
-            for action in provider:
-                self._remove_action(action)
-        except TypeError:
-            self._remove_action(provider)
+
 
     def _remove_action(self, action):
         for verb in action_verbs(action):
@@ -178,6 +185,9 @@ class ActionProvider(metaclass=CoreMeta):
     @property
     def action_providers(self):
         return itertools.chain((getattr(self, func_name) for func_name in self.class_providers), self.instance_providers)
+
+    def _on_reload(self):
+        self.instance_providers = []
 
     def dynamic_action(self, func, verbs=None):
         if not verbs:

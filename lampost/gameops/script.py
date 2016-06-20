@@ -138,6 +138,9 @@ class Scriptable(DBOFacet):
         except Exception:
             log.exception("Exception on user defined 'load_scripts'")
 
+    def _on_reload(self):
+        self._on_loaded()
+
     @Shadow
     def load_scripts(self, *args, **kwargs):
         pass

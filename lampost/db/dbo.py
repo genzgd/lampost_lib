@@ -66,8 +66,10 @@ class CoreDBO(DBOFacet):
         self.on_loaded()
         return self
 
-    def rehydrate(self):
-        return self.hydrate(self.save_value)
+    def reload(self):
+        self.hydrate(self.save_value)
+        call_mro(self, '_on_reload')
+        return self
 
     def clone(self):
         clone = self.__class__()
@@ -208,6 +210,7 @@ class KeyDBO(CoreDBO):
 
     @property
     def save_value(self):
+        dbofield.save_value_refs.current = []
         save_value = super().save_value
         if getattr(self, 'class_id', self.dbo_key_type) != self.dbo_key_type:
             save_value['class_id'] = self.class_id
@@ -223,7 +226,6 @@ class KeyDBO(CoreDBO):
         db.save_object(self, autosave=True)
 
     def to_db_value(self):
-        dbofield.save_value_refs.current = []
         return self.save_value, dbofield.save_value_refs.current
 
 

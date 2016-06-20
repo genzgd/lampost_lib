@@ -19,6 +19,17 @@ class Editor(MethodHandler):
     parent_type = None
     children_types = None
 
+    def _reload_holders(self, dbo):
+        holder_keys = db.fetch_set_keys('{}:holders'.format(dbo.dbo_key))
+        for holder_key in holder_keys:
+            holder = db.load_cached(holder_key)
+            if holder:
+                holder.reload()
+            else:
+                holder = db.load_object(holder_key)
+            if holder:
+                edit_update.publish_edit('update', holder, self.session, True)
+
     def prepare(self):
         super().prepare()
         perm.check_perm(self.player, self)
@@ -49,16 +60,8 @@ class Editor(MethodHandler):
             raise DataError('Gone: Object with key {} does not exist'.format(self.raw['dbo_id']))
         perm.check_perm(self.player, del_obj)
         self._pre_delete(del_obj)
-        holder_keys = db.fetch_set_keys('{}:holders'.format(del_obj.dbo_key))
-        for dbo_key in holder_keys:
-            cached_holder = db.load_cached(dbo_key)
-            if cached_holder:
-                db.save_object(cached_holder)
         db.delete_object(del_obj)
-        for dbo_key in holder_keys:
-            reloaded = db.reload_object(dbo_key)
-            if reloaded:
-                edit_update.publish_edit('update', reloaded, self.session, True)
+        self._reload_holders(del_obj)
         self._post_delete(del_obj)
         edit_update.publish_edit('delete', del_obj, self.session)
 
@@ -72,10 +75,7 @@ class Editor(MethodHandler):
             existing_obj.change_owner(self.raw['owner_id'])
         db.update_object(existing_obj, self.raw)
         self._post_update(existing_obj)
-        for holder_key in db.fetch_set_keys('{}:holders'.format(existing_obj.dbo_key)):
-            cached = db.load_cached(holder_key)
-            if cached:
-                cached.rehydrate()
+        self._reload_holders(existing_obj)
         return edit_update.publish_edit('update', existing_obj, self.session)
 
     def metadata(self):
