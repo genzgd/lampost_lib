@@ -28,12 +28,16 @@ class SessionManager():
         self._config()
 
     def _config(self):
-        self._link_reg = ev.register_p(self._refresh_link_status, seconds=config_value('refresh_link_interval'))
+        refresh_link_interval = config_value('refresh_link_interval')
+        log.info("Registering refresh interval as {} seconds", refresh_link_interval)
+        self._link_reg = ev.register_p(self._refresh_link_status, seconds=refresh_link_interval)
         self._broadcast_reg = ev.register_p(self._broadcast_status, seconds=config_value('broadcast_interval'))
 
         self.link_dead_prune = timedelta(seconds=config_value('link_dead_prune'))
         self.link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
-        self.link_idle_refresh = timedelta(seconds=config_value('link_idle_refresh'))
+        link_idle_refresh = config_value('link_idle_refresh')
+        log.info("Link idle refresh set to {} seconds", link_idle_refresh)
+        self.link_idle_refresh = timedelta(seconds=link_idle_refresh)
 
     def _update_config(self):
         ev.unregister(self._link_reg)
@@ -145,6 +149,7 @@ class SessionManager():
     def _refresh_link_status(self):
         now = datetime.now()
         for session_id, session in list(self.session_map.items()):
+            log.info("Checking session {}", session_id)
             if session.ld_time:
                 if now - session.ld_time > self.link_dead_prune:
                     del self.session_map[session_id]
