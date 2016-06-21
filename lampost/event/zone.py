@@ -22,5 +22,4 @@ class Attachable(metaclass=CoreMeta):
             call_mro(self, '_on_detach')
             self.attached = False
         else:
-            log.warn("Detaching already detached obj", self)
-
+            log.warn("Detaching already detached obj: {}", self)

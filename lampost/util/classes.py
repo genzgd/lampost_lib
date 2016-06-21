@@ -10,6 +10,15 @@ def call_mro(obj, func_name, *args, **kwargs):
             pass
 
 
+def call_each(coll, func_name, *args, **kwargs):
+    for obj in coll:
+        try:
+            func = getattr(obj, func_name)
+        except AttributeError:
+            continue
+        func(*args, **kwargs)
+
+
 def subclasses(cls):
     for subclass in cls.__subclasses__():
         yield subclass

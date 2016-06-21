@@ -1,5 +1,3 @@
-import inspect
-
 from lampost.di.resource import Injected, module_inject
 from lampost.db.registry import get_dbo_class
 from lampost.db.exceptions import DataError
@@ -11,8 +9,6 @@ db = Injected('datastore')
 perm = Injected('perm')
 edit_update = Injected('edit_update_service')
 module_inject(__name__)
-
-obj_defaults = {}
 
 
 class Editor(MethodHandler):
@@ -28,6 +24,7 @@ class Editor(MethodHandler):
             else:
                 holder = db.load_object(holder_key)
             if holder:
+                db.save_object(holder)
                 edit_update.publish_edit('update', holder, self.session, True)
 
     def prepare(self):
