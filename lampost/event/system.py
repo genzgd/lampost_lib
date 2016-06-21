@@ -15,7 +15,7 @@ pulse_lc = None
 maintenance_lc = None
 
 
-@on_app_start
+@on_app_start(priority=100)
 def _start():
     dispatcher.current_pulse = db.load_value('event_pulse', 0)
     dispatcher.register_p(lambda: db.save_value('event_pulse', dispatcher.current_pulse), 100)
