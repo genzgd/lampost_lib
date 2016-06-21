@@ -151,8 +151,10 @@ class ActionCache:
         for verb in action_verbs(action):
             self._primary_map[verb].append(action)
             if not ' ' in verb:
-                for vl in range(1, len(verb)):
-                    self._abbrev_map[verb[:vl]].append(action)
+                for vi in range(1, len(verb)):
+                    a_list = self._abbrev_map[verb[:vi]]
+                    if action not in a_list:
+                        a_list.append(action)
         for provider in getattr(action, 'action_providers', ()):
             self.add(provider)
 

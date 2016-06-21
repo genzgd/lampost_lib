@@ -149,7 +149,6 @@ class SessionManager():
     def _refresh_link_status(self):
         now = datetime.now()
         for session_id, session in list(self.session_map.items()):
-            log.info("Checking session {}", session_id)
             if session.ld_time:
                 if now - session.ld_time > self.link_dead_prune:
                     del self.session_map[session_id]

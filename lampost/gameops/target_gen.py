@@ -11,7 +11,7 @@ def recursive_targets(key_type, target_list, target_key):
                 yield target
         except AttributeError:
             pass
-        for sub_target in recursive_targets(key_type, getattr(key_type, 'target_providers', ()), target_key):
+        for sub_target in recursive_targets(key_type, getattr(target, 'target_providers', ()), target_key):
             yield sub_target
 
 

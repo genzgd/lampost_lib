@@ -14,7 +14,7 @@ def _gen_keys(target_id):
 
 def _abbrev_keys(parts, key_ix):
     part = parts[key_ix]
-    for pl in (range(3, len(part))):
+    for pl in range(2, max(len(part), 5)):
         sub = parts[:key_ix] + [part[:pl]] + parts[key_ix + 1:]
         yield ' '.join(sub)
         if key_ix < len(sub) - 1:
@@ -34,7 +34,7 @@ class TargetKeys:
     def abbrev(self):
         for key in self.primary:
             parts = key.split()
-            for ix in range(len(parts)):
+            for ix in range(len(parts) - 1, -1, -1):
                 yield from _abbrev_keys(parts, ix)
 
 
