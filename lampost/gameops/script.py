@@ -1,4 +1,6 @@
+import inspect
 import bisect
+
 from collections import defaultdict
 
 from lampost.di.app import on_app_start
@@ -12,11 +14,26 @@ ev = Injected('dispatcher')
 module_inject(__name__)
 
 script_cache = {}
+decorators = {}
 
 
 @on_app_start
 def _start():
     ev.register('maintenance', lambda: script_cache.clear())
+
+
+def script_decorator(func):
+    args = inspect.getargspec(func)[0]
+    args.remove('target')
+    args.remove('script_ref')
+    decorators[func.__name__] = {'func': func, 'args': args}
+    return func
+
+
+@script_decorator
+def shadow(target, script_ref, class_id, cls_shadow):
+    func_shadows = target.shadow_chains[script_ref.func_name]
+    bisect.insort(func_shadows, script_ref)
 
 
 def create_chain(funcs):
@@ -92,8 +109,8 @@ class ShadowScript(ChildDBO):
     dbo_parent_type = 'area'
 
     title = DBOField('', required=True)
-    cls_type = DBOField('any')
-    cls_shadow = DBOField('any_func')
+    decorator = DBOField(required=True)
+    decorator_args = DBOField({})
     text = DBOField('', required=True)
     script_hash = DBOField('')
     approved = DBOField(False)
@@ -107,11 +124,20 @@ class ShadowScript(ChildDBO):
             log.info("Loading unapproved script {}", self.dbo_id)
 
 
-class ShadowRef(CoreDBO):
-    class_id = 'shadow_ref'
+class ScriptRef(CoreDBO):
+    class_id = 'script_ref'
+
     func_name = DBOField('', required=True)
     priority = DBOField(0)
     script = DBOLField(dbo_class_id='script', required=True)
+
+    @property
+    def valid(self):
+        return script.code is not None
+
+    @property
+    def decorator_args(self):
+        return script.decorator_args
 
     def __cmp__(self, other):
         if self.priority < other.priority:
@@ -122,17 +148,17 @@ class ShadowRef(CoreDBO):
 
 
 class Scriptable(DBOFacet):
-    shadow_refs = DBOCField([], 'shadow_ref')
+    script_refs = DBOCField([], 'script_ref')
     script_vars = DBOCField({})
-    shadow_chains = AutoField({})
+    shadow_chains = AutoField(defaultdict(list))
 
     def _on_loaded(self):
-        chains = defaultdict(list)
-        for shadow_ref in self.shadow_refs:
-            if shadow_ref.script.code:
-                func_shadows = chains[shadow_ref.func_name]
-                bisect.insort(func_shadows, shadow_ref)
-        self.shadow_chains = chains
+        for script_ref in self.script_refs:
+            if script_ref.valid:
+                try:
+                    decorators[script_ref.decorator]['func'](self, script_ref, **script_ref.decorator_args)
+                except Exception:
+                    log.exception("Failed to decorate user script")
         try:
             self.load_scripts()
         except Exception:
