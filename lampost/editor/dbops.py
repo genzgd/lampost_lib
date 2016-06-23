@@ -3,7 +3,7 @@ import time
 from lampost.db.exceptions import DataError
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import load_yaml, activate
-from lampost.db.registry import get_dbo_class, _dbo_registry
+from lampost.db.registry import get_dbo_class, _dbo_registry, get_mixed_type
 from lampost.editor.admin import admin_op
 from lampost.db import dbconfig
 
@@ -33,6 +33,46 @@ def rebuild_indexes(class_id):
 
 
 @admin_op
+def purge_invalid(confirm='no'):
+
+    start_time = time.time()
+    total = 0
+    purged = 0
+
+    execute = confirm == 'confirm'
+
+    def purge(purge_cls, set_key=None):
+        nonlocal purged, total
+
+        for dbo_id in db.fetch_set_keys(set_key):
+            total += 1
+            dbo_key = ':'.join((purge_cls.dbo_key_type, dbo_id))
+            dbo_dict = db.load_value(dbo_key)
+            if dbo_dict is None:
+                purged += 1
+                log.warn("Missing value for key {}", dbo_key)
+                if execute:
+                    db.delete_set_key(set_key, key)
+            else:
+                dbo = get_mixed_type(purge_cls.dbo_key_type, dbo_dict.get('mixins'))()
+                dbo.dbo_id = dbo_id
+                valid = dbo.hydrate(dbo_dict)
+                if valid is None:
+                    purged += 1
+                    if execute:
+                        db.delete_object(dbo)
+                for child_type in getattr(dbo_cls, 'dbo_children_types', ()):
+                    purge(get_dbo_class(child_type), '{}_{}s:{}'.format(dbo_key_type, child_type, dbo_id))
+
+    for dbo_cls in _dbo_registry.values():
+        dbo_key_type = getattr(dbo_cls, 'dbo_key_type', None)
+        if dbo_key_type and not hasattr(dbo_cls, 'dbo_parent_type'):
+            purge(dbo_cls, dbo_cls.dbo_set_key)
+
+    return "{} of {} objects purged in {} seconds".format(purged, total, time.time() - start_time)
+
+
+@admin_op
 def rebuild_owner_refs():
     # Yes, we're abusing the keys command.  If we required a later version of Redis (2.8) we could use SCAN
     for owned_key in db.redis.keys('owned:*'):
@@ -56,8 +96,7 @@ def rebuild_owner_refs():
 @admin_op
 def rebuild_immortal_list():
     db.delete_key('immortals')
-    player_cls = get_dbo_class('player')
-    for player in db.load_object_set(player_cls):
+    for player in db.load_object_set('player'):
         if player.imm_level:
             db.set_db_hash('immortals', player.dbo_id, player.imm_level)
 

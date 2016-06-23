@@ -14,7 +14,7 @@ ev = Injected('dispatcher')
 module_inject(__name__)
 
 script_cache = {}
-decorators = {}
+builders = {}
 
 
 @on_app_start
@@ -22,18 +22,9 @@ def _start():
     ev.register('maintenance', lambda: script_cache.clear())
 
 
-def script_decorator(func):
-    args = inspect.getargspec(func)[0]
-    args.remove('target')
-    args.remove('script_ref')
-    decorators[func.__name__] = {'func': func, 'args': args}
-    return func
-
-
-@script_decorator
-def shadow(target, script_ref, class_id, cls_shadow):
-    func_shadows = target.shadow_chains[script_ref.func_name]
-    bisect.insort(func_shadows, script_ref)
+def script_builder(cls):
+    builders[cls.name] = cls
+    return cls
 
 
 def create_chain(funcs):
@@ -84,7 +75,7 @@ class Shadow:
         original_inserted = False
         for shadow in instance.shadow_chains.get(self.func_name, []):
             shadow_locals = {}
-            exec(shadow.script.code, self.func.__globals__, shadow_locals)
+            exec(shadow.code, self.func.__globals__, shadow_locals)
             shadow_func = next(iter(shadow_locals.values()))
             if shadow.priority == 0:
                 original_inserted = True
@@ -104,13 +95,13 @@ class Shadow:
         return bound_chain
 
 
-class ShadowScript(ChildDBO):
+class UserScript(ChildDBO):
     dbo_key_type = 'script'
     dbo_parent_type = 'area'
 
     title = DBOField('', required=True)
-    decorator = DBOField(required=True)
-    decorator_args = DBOField({})
+    builder = DBOField('', required=True)
+    metadata = DBOField({})
     text = DBOField('', required=True)
     script_hash = DBOField('')
     approved = DBOField(False)
@@ -128,37 +119,32 @@ class ScriptRef(CoreDBO):
     class_id = 'script_ref'
 
     func_name = DBOField('', required=True)
-    priority = DBOField(0)
     script = DBOLField(dbo_class_id='script', required=True)
+    build_args = DBOField({})
 
     @property
-    def valid(self):
-        return script.code is not None
+    def code(self):
+        return self.script.code
 
     @property
-    def decorator_args(self):
-        return script.decorator_args
+    def builder(self):
+        return builders[self.script.builder]
 
-    def __cmp__(self, other):
-        if self.priority < other.priority:
-            return -1
-        if self.priority > other.priority:
-            return 1
-        return 0
+    def build(self, target):
+        if self.code:
+            try:
+                self.builder.build(target, self)
+            except Exception:
+                log.exception("Failed to build user script {}", self.dto)
 
 
 class Scriptable(DBOFacet):
     script_refs = DBOCField([], 'script_ref')
-    script_vars = DBOCField({})
     shadow_chains = AutoField(defaultdict(list))
 
     def _on_loaded(self):
         for script_ref in self.script_refs:
-            if script_ref.valid:
-                try:
-                    decorators[script_ref.decorator]['func'](self, script_ref, **script_ref.decorator_args)
-                except Exception:
-                    log.exception("Failed to decorate user script")
+            script_ref.build(self)
         try:
             self.load_scripts()
         except Exception:
@@ -170,3 +156,27 @@ class Scriptable(DBOFacet):
     @Shadow
     def load_scripts(self, *args, **kwargs):
         pass
+
+
+class ScriptShadow:
+    def __init__(self, code, priority=0):
+        self.code = code
+        self.priority = priority
+
+    def __cmp__(self, other):
+        if self.priority < other.priority:
+            return -1
+        if self.priority > other.priority:
+            return 1
+        return 0
+
+
+@script_builder
+class ShadowBuilder:
+    name = "shadow"
+
+    @staticmethod
+    def build(target, s_ref):
+        func_shadows = target.shadow_chains[s_ref.func_name]
+        shadow = ScriptShadow(s_ref.code, s_ref.build_args['priority'])
+        bisect.insort(func_shadows, shadow)

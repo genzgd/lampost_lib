@@ -54,7 +54,7 @@ class RedisStore:
             except AttributeError:
                 pass
             try:
-                dbo_key, dbo_id = ':'.join([key_type, dbo_key]), dbo_key
+                dbo_key, dbo_id = ':'.join((key_type, dbo_key)), dbo_key
             except TypeError:
                 if not silent:
                     log.exception("Invalid dbo_key passed to load_object", stack_info=True)

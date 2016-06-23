@@ -1,6 +1,6 @@
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.core import CoreMeta
-from lampost.util.classes import call_mro
+from lampost.util.classes import call_mro, cls_name
 from lampost.db import dbofield
 from lampost.db.registry import set_dbo_class, get_dbo_class
 from lampost.db.dbofield import DBOField
@@ -61,7 +61,7 @@ class CoreDBO(DBOFacet):
                 except AttributeError:
                     pass
             if not dbo_value and dbo_field.required:
-                log.warn("Missing required field {} in object {}", field, dto)
+                log.warn("Missing required field {} in class {} dto {}", field, cls_name(self.__class__), dto)
                 return None
         self.on_loaded()
         return self
