@@ -52,12 +52,11 @@ def purge_invalid(confirm='no'):
                 purged += 1
                 log.warn("Missing value for key {}", dbo_key)
                 if execute:
-                    db.delete_set_key(set_key, key)
+                    db.delete_set_key(set_key, dbo_id)
             else:
                 dbo = get_mixed_type(purge_cls.dbo_key_type, dbo_dict.get('mixins'))()
                 dbo.dbo_id = dbo_id
-                valid = dbo.hydrate(dbo_dict)
-                if valid is None:
+                if not dbo.hydrate(dbo_dict):
                     purged += 1
                     if execute:
                         db.delete_object(dbo)
@@ -137,7 +136,7 @@ def restore_db_from_yaml(config_id='lampost', path='conf', force="no"):
     try:
         db_config = dbconfig.create(config_id, yaml_config, True)
     except Exception as exp:
-        log.exeption("Failed to create configuration from yaml")
+        log.exception("Failed to create configuration from yaml")
         db.save_object(existing)
         return "Exception creating configuration from yaml."
     activate(db_config.section_values)

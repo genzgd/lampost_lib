@@ -45,7 +45,6 @@ class DBOFacet(metaclass=CoreMeta):
 
 class CoreDBO(DBOFacet):
     dbo_owner = None
-    load_funcs = []
 
     def on_loaded(self):
         call_mro(self, '_on_loaded')

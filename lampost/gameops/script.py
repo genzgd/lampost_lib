@@ -95,10 +95,7 @@ class Shadow:
         return bound_chain
 
 
-class UserScript(ChildDBO):
-    dbo_key_type = 'script'
-    dbo_parent_type = 'area'
-
+class UserScript(DBOFacet):
     title = DBOField('', required=True)
     builder = DBOField('', required=True)
     metadata = DBOField({})
@@ -106,13 +103,16 @@ class UserScript(ChildDBO):
     script_hash = DBOField('')
     approved = DBOField(False)
 
-    code = None
+    _code = AutoField()
 
-    def _on_loaded(self):
+    @property
+    def code(self):
         if self.approved:
-            self.code, _ = compile_script(self.script_hash, self.text, self.dbo_id)
+            self._code, err_str = compile_script(self.script_hash, self.text, self.dbo_id)
+            if err_str:
+                log.warn("Error compiling UserScript {}: {}", self.dbo_id, err_str)
         else:
-            log.info("Loading unapproved script {}", self.dbo_id)
+            self._code = None
 
 
 class ScriptRef(CoreDBO):
@@ -122,20 +122,14 @@ class ScriptRef(CoreDBO):
     script = DBOLField(dbo_class_id='script', required=True)
     build_args = DBOField({})
 
-    @property
-    def code(self):
-        return self.script.code
-
-    @property
-    def builder(self):
-        return builders[self.script.builder]
-
     def build(self, target):
-        if self.code:
+        if self.script.approved:
             try:
                 self.builder.build(target, self)
             except Exception:
                 log.exception("Failed to build user script {}", self.dto)
+        else:
+            log.info("Referencing unapproved script {}", self.script.dbo_id)
 
 
 class Scriptable(DBOFacet):
