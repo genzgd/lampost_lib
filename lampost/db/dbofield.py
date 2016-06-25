@@ -271,7 +271,7 @@ def load_any(class_id, dbo_owner, dto_repr):
             template.config_instance(instance, dbo_owner)
             return instance
         else:
-            log.warn("Missing template for template_key {}", template_key)
+            log.warn("Missing template for template_key {} owner {}", template_key, dbo_owner.dbo_id)
             return
 
     # Finally, it's not a template and it is not a reference to an independent DB object, it must be a pure child
