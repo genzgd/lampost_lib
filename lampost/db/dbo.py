@@ -66,6 +66,7 @@ class CoreDBO(DBOFacet):
         return self
 
     def reload(self):
+        call_mro(self, '_pre_reload')
         self.hydrate(self.save_value)
         call_mro(self, '_on_reload')
         return self

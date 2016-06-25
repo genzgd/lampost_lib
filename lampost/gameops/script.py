@@ -105,6 +105,7 @@ class UserScript(DBOFacet):
 
     _code = AutoField()
 
+
     @property
     def code(self):
         if self.approved:
@@ -113,6 +114,7 @@ class UserScript(DBOFacet):
                 log.warn("Error compiling UserScript {}: {}", self.dbo_id, err_str)
         else:
             self._code = None
+        return self._code
 
 
 class ScriptRef(CoreDBO):
@@ -122,12 +124,20 @@ class ScriptRef(CoreDBO):
     script = DBOLField(dbo_class_id='script', required=True)
     build_args = DBOField({})
 
+    @property
+    def builder(self):
+        return builders[self.script.builder]
+
+    @property
+    def code(self):
+        return self.script.code
+
     def build(self, target):
         if self.script.approved:
             try:
                 self.builder.build(target, self)
             except Exception:
-                log.exception("Failed to build user script {}", self.dto)
+                log.exception("Failed to build user script {}", self.dto_value)
         else:
             log.info("Referencing unapproved script {}", self.script.dbo_id)
 
@@ -137,15 +147,19 @@ class Scriptable(DBOFacet):
     shadow_chains = AutoField(defaultdict(list))
 
     def _on_loaded(self):
+        self._prepare_scripts()
+
+    def _on_reload(self):
+        self.shadow_chains = defaultdict(list)
+        self._prepare_scripts()
+
+    def _prepare_scripts(self):
         for script_ref in self.script_refs:
             script_ref.build(self)
         try:
             self.load_scripts()
         except Exception:
             log.exception("Exception on user defined 'load_scripts'")
-
-    def _on_reload(self):
-        self._on_loaded()
 
     @Shadow
     def load_scripts(self, *args, **kwargs):

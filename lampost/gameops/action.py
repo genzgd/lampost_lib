@@ -158,8 +158,6 @@ class ActionCache:
         for provider in getattr(action, 'action_providers', ()):
             self.add(provider)
 
-
-
     def _remove_action(self, action):
         for verb in action_verbs(action):
             try:
@@ -188,7 +186,7 @@ class ActionProvider(metaclass=CoreMeta):
     def action_providers(self):
         return itertools.chain((getattr(self, func_name) for func_name in self.class_providers), self.instance_providers)
 
-    def _on_reload(self):
+    def _pre_reload(self):
         self.instance_providers = []
 
     def dynamic_action(self, func, verbs=None):
