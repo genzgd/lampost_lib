@@ -15,8 +15,20 @@ class Editor(MethodHandler):
     parent_type = None
     children_types = None
 
-    def _reload_holders(self, dbo):
-        for holder_key in db.all_holders(dbo.dbo_key):
+    def _all_holders(self, dbo_id):
+        dbo_key = '{}:{}'.format(self.key_type, dbo_id)
+        all_obj_keys = {dbo_key}
+        all_holders = db.dbo_holders(dbo_key)
+        if self.children_types:
+            for child_type in self.children_types:
+                child_keys = db.fetch_set_keys("{}_{}s:{}".format(self.key_type, child_type, dbo_id))
+                all_obj_keys.update(child_keys)
+                for child_id in child_keys:
+                    all_holders.update(db.dbo_holders('{}:{}'.format(child_type, child_id)))
+        return all_holders - all_obj_keys
+
+    def _reload_holders(self, holders):
+        for holder_key in holders:
             holder = db.load_cached(holder_key)
             if holder:
                 holder.reload()
@@ -56,9 +68,10 @@ class Editor(MethodHandler):
             raise DataError('Gone: Object with key {} does not exist'.format(self.raw['dbo_id']))
         perm.check_perm(self.player, del_obj)
         self._pre_delete(del_obj)
+        del_holders = self._all_holders(self.raw['dbo_id'])
         db.delete_object(del_obj)
-        self._reload_holders(del_obj)
         self._post_delete(del_obj)
+        self._reload_holders(del_holders)
         edit_update.publish_edit('delete', del_obj, self.session)
 
     def update(self):
@@ -69,9 +82,10 @@ class Editor(MethodHandler):
         self._pre_update(existing_obj)
         if hasattr(existing_obj, 'change_owner') and self.raw['owner_id'] != existing_obj.owner_id:
             existing_obj.change_owner(self.raw['owner_id'])
+        update_holders = db.dbo_holders(dbo.dbo_key)
         db.update_object(existing_obj, self.raw)
         self._post_update(existing_obj)
-        self._reload_holders(existing_obj)
+        self._reload_holders(update_holders)
         return edit_update.publish_edit('update', existing_obj, self.session)
 
     def metadata(self):
@@ -79,7 +93,7 @@ class Editor(MethodHandler):
                 'new_object': self.obj_class.new_dto()}
 
     def test_delete(self):
-        return list(db.fetch_set_keys('{}:{}:holders'.format(self.key_type, self.raw['dbo_id'])))
+        return list(self._all_holders(self.raw['dbo_id']))
 
     def _edit_dto(self, dbo):
         dto = dbo.edit_dto
