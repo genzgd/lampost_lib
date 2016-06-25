@@ -1,4 +1,3 @@
-import inspect
 import bisect
 
 from collections import defaultdict
@@ -28,7 +27,6 @@ def script_builder(cls):
 
 
 def create_chain(funcs):
-
     def chained(self, *args, **kwargs):
         try:
             last_return = None
@@ -105,7 +103,6 @@ class UserScript(DBOFacet):
 
     _code = AutoField()
 
-
     @property
     def code(self):
         if self.approved:
@@ -147,19 +144,18 @@ class Scriptable(DBOFacet):
     shadow_chains = AutoField(defaultdict(list))
 
     def _on_loaded(self):
-        self._prepare_scripts()
-
-    def _on_reload(self):
-        self.shadow_chains = defaultdict(list)
-        self._prepare_scripts()
-
-    def _prepare_scripts(self):
         for script_ref in self.script_refs:
             script_ref.build(self)
         try:
             self.load_scripts()
         except Exception:
             log.exception("Exception on user defined 'load_scripts'")
+
+    def _pre_reload(self):
+        bound_methods = {name for name, value in self.__dict__.items() if getattr(value, '__self__', None) == self}
+        for name in bound_methods:
+            del self.__dict__[name]
+        self.shadow_chains = defaultdict(list)
 
     @Shadow
     def load_scripts(self, *args, **kwargs):
@@ -171,12 +167,8 @@ class ScriptShadow:
         self.code = code
         self.priority = priority
 
-    def __cmp__(self, other):
-        if self.priority < other.priority:
-            return -1
-        if self.priority > other.priority:
-            return 1
-        return 0
+    def __lt__(self, other):
+        return self.priority < other.priority
 
 
 @script_builder

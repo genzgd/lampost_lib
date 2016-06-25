@@ -80,7 +80,6 @@ class DBOCField(DBOField, TemplateField):
         self.kwargs = kwargs
         super().__init__(*args, **kwargs)
 
-
     def check_default(self, value, instance):
         if self.field not in instance.__dict__:
             raise KeyError

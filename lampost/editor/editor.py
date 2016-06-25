@@ -16,8 +16,7 @@ class Editor(MethodHandler):
     children_types = None
 
     def _reload_holders(self, dbo):
-        holder_keys = db.fetch_set_keys('{}:holders'.format(dbo.dbo_key))
-        for holder_key in holder_keys:
+        for holder_key in db.all_holders(dbo.dbo_key):
             holder = db.load_cached(holder_key)
             if holder:
                 holder.reload()
