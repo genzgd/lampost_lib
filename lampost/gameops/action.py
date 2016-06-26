@@ -1,5 +1,4 @@
 import inspect
-import types
 import itertools
 from collections import defaultdict
 
@@ -198,10 +197,7 @@ class ActionScriptBuilder:
 
     @staticmethod
     def build(target, s_ref):
-        action_locals = {}
-        exec(s_ref.code, {}, action_locals)
-        action_func = next(iter(action_locals.values()))
-        action = obj_action(**s_ref.build_args)(action_func)
+        action = obj_action(**s_ref.build_args)(s_ref.script_func)
         target_action = action.__get__(target)
-        target.__dict__[action_func.__name__] = target_action
+        target.__dict__[s_ref.script_func.__name__] = target_action
         target.instance_providers.append(target_action)

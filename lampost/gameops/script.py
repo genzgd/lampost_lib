@@ -10,6 +10,7 @@ from lampost.db.dbofield import DBOField, DBOLField, DBOCField
 
 log = Injected('log')
 ev = Injected('dispatcher')
+script_globals = {}
 module_inject(__name__)
 
 script_cache = {}
@@ -19,6 +20,7 @@ builders = {}
 @on_app_start
 def _start():
     ev.register('maintenance', lambda: script_cache.clear())
+    script_globals['log'] = log
 
 
 def script_builder(cls):
@@ -35,6 +37,8 @@ def create_chain(funcs):
             return last_return
         except Exception:
             log.exception("Exception in user defined script")
+
+    chained._user_def = True
     return chained
 
 
@@ -66,21 +70,18 @@ class Shadow:
             return instance.__dict__[self.func_name]
         except KeyError:
             pass
-        return self.create_chain(instance)
+        return self._create_chain(instance)
 
-    def create_chain(self, instance):
+    def _create_chain(self, instance):
         shadow_funcs = []
         original_inserted = False
         for shadow in instance.shadow_chains.get(self.func_name, []):
-            shadow_locals = {}
-            exec(shadow.code, self.func.__globals__, shadow_locals)
-            shadow_func = next(iter(shadow_locals.values()))
             if shadow.priority == 0:
                 original_inserted = True
             elif shadow.priority > 0 and not original_inserted:
                 shadow_funcs.append(self.func)
                 original_inserted = True
-            shadow_funcs.append(shadow_func)
+            shadow_funcs.append(shadow.func)
         if not original_inserted:
             shadow_funcs.append(self.func)
 
@@ -101,44 +102,51 @@ class UserScript(DBOFacet):
     script_hash = DBOField('')
     approved = DBOField(False)
 
-    _code = AutoField()
+    _script_func = AutoField()
 
     @property
-    def code(self):
-        if self.approved:
-            self._code, err_str = compile_script(self.script_hash, self.text, self.dbo_id)
-            if err_str:
-                log.warn("Error compiling UserScript {}: {}", self.dbo_id, err_str)
-        else:
-            self._code = None
-        return self._code
+    def script_func(self):
+        if not self.approved:
+            self._script_func = None
+            return None
+        if self._script_func:
+            return self._script_func
+        code, err_str = compile_script(self.script_hash, self.text, self.dbo_id)
+        if err_str:
+            log.warn("Error compiling UserScript {}: {}", self.dbo_id, err_str)
+            return None
+        my_globals = script_globals if isinstance(script_globals, dict) else {}
+        script_locals = {}
+        exec(code, my_globals, script_locals)
+        self._script_func = next(iter(script_locals.values()))
+        self._script_func._user_def = True
+        return self._script_func
 
 
 class ScriptRef(CoreDBO):
     class_id = 'script_ref'
 
-    func_name = DBOField('', required=True)
+    func_name = DBOField('')
     script = DBOLField(dbo_class_id='script', required=True)
     build_args = DBOField({})
 
     @property
-    def builder(self):
-        return builders[self.script.builder]
-
-    @property
-    def code(self):
-        return self.script.code
+    def script_func(self):
+        return self.script.script_func
 
     def build(self, target):
         if not self.script:
             return
-        if self.script.approved:
-            try:
-                self.builder.build(target, self)
-            except Exception:
-                log.exception("Failed to build user script {}", self.dto_value)
-        else:
+        if not self.script.approved:
             log.info("Referencing unapproved script {}", self.script.dbo_id)
+            return
+        if not self.script.script_func:
+            return
+        try:
+            builder = builders[self.script.builder]
+            builder.build(target, self)
+        except Exception:
+            log.exception("Failed to build user script {}", self.dto_value)
 
 
 class Scriptable(DBOFacet):
@@ -154,8 +162,8 @@ class Scriptable(DBOFacet):
             log.exception("Exception on user defined 'load_scripts'")
 
     def _pre_reload(self):
-        bound_methods = {name for name, value in self.__dict__.items() if getattr(value, '__self__', None) == self}
-        for name in bound_methods:
+        user_methods = {name for name, value in self.__dict__.items() if hasattr(value, '_user_def')}
+        for name in user_methods:
             del self.__dict__[name]
         self.shadow_chains = defaultdict(list)
 
@@ -165,8 +173,8 @@ class Scriptable(DBOFacet):
 
 
 class ScriptShadow:
-    def __init__(self, code, priority=0):
-        self.code = code
+    def __init__(self, func, priority=0):
+        self.func = func
         self.priority = priority
 
     def __lt__(self, other):
@@ -180,5 +188,5 @@ class ShadowBuilder:
     @staticmethod
     def build(target, s_ref):
         func_shadows = target.shadow_chains[s_ref.func_name]
-        shadow = ScriptShadow(s_ref.code, s_ref.build_args['priority'])
+        shadow = ScriptShadow(s_ref.script_func, s_ref.build_args['priority'])
         bisect.insort(func_shadows, shadow)

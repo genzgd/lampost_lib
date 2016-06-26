@@ -1,16 +1,25 @@
 import inspect
 import logging
+from weakref import WeakSet
 
 from lampost.db.dbo import CoreDBO
 from lampost.meta.core import CoreMeta
 from lampost.db.registry import get_dbo_class, set_instance_class
 from lampost.db.dbofield import DBOField, DBOTField, DBOCField
+from lampost.util.classes import call_mro
 
 log = logging.getLogger(__name__)
 
 
 class Template(metaclass=CoreMeta):
     instance_cls = None
+
+    def _on_loaded(self):
+        self._instances = WeakSet()
+
+    def _on_reload(self):
+        for instance in self._instances:
+            instance.reload()
 
     def create_instance(self, owner=None):
         instance = self.get_instance()
@@ -22,6 +31,7 @@ class Template(metaclass=CoreMeta):
         instance = self.instance_cls()
         instance.template = self
         instance.template_key = self.dbo_key
+        self._instances.add(instance)
         return instance
 
     def config_instance(self, instance, owner):
