@@ -5,7 +5,7 @@ from collections import defaultdict
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
-from lampost.db.dbo import ChildDBO, DBOFacet, CoreDBO
+from lampost.db.dbo import DBOFacet, CoreDBO
 from lampost.db.dbofield import DBOField, DBOLField, DBOCField
 
 log = Injected('log')
@@ -130,6 +130,8 @@ class ScriptRef(CoreDBO):
         return self.script.code
 
     def build(self, target):
+        if not self.script:
+            return
         if self.script.approved:
             try:
                 self.builder.build(target, self)

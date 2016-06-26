@@ -179,6 +179,7 @@ class Parse:
                 self._ambiguous()
             match, match.target, method_ix = target_matches[target_index]
             del match.targets
+            del match.target_index
             if match.target_methods:
                 match.target_method = match.target_methods[method_ix]
                 del match.target_methods

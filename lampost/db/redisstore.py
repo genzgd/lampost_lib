@@ -223,8 +223,19 @@ class RedisStore:
     def trim_db_list(self, list_id, start, end):
         return self.redis.ltrim(list_id, start, end)
 
-    def dbo_holders(self, dbo_key):
-        return self.fetch_set_keys('{}:holders'.format(dbo_key))
+    def dbo_holders(self, obj_key, degrees=0):
+        all_keys = set()
+
+        def find(dbo_key, degree):
+            holder_keys = self.fetch_set_keys('{}:holders'.format(dbo_key))
+            for new_key in holder_keys:
+                if new_key != obj_key and new_key not in all_keys:
+                    all_keys.add(new_key)
+                    if degree < degrees:
+                        find(new_key, degree + 1)
+
+        find(obj_key, 0)
+        return all_keys
 
     def _json_to_obj(self, json_str, key_type, dbo_id):
         dbo_dict = json_decode(json_str)

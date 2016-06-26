@@ -18,7 +18,7 @@ class Editor(MethodHandler):
     def _all_holders(self, dbo_id):
         dbo_key = '{}:{}'.format(self.key_type, dbo_id)
         all_obj_keys = {dbo_key}
-        all_holders = db.dbo_holders(dbo_key)
+        all_holders = db.dbo_holders(dbo_key, 1)
         if self.children_types:
             for child_type in self.children_types:
                 child_keys = db.fetch_set_keys("{}_{}s:{}".format(self.key_type, child_type, dbo_id))
@@ -82,7 +82,7 @@ class Editor(MethodHandler):
         self._pre_update(existing_obj)
         if hasattr(existing_obj, 'change_owner') and self.raw['owner_id'] != existing_obj.owner_id:
             existing_obj.change_owner(self.raw['owner_id'])
-        update_holders = db.dbo_holders(dbo.dbo_key)
+        update_holders = db.dbo_holders(existing_obj.dbo_key, 1)
         db.update_object(existing_obj, self.raw)
         self._post_update(existing_obj)
         self._reload_holders(update_holders)

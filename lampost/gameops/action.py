@@ -1,9 +1,11 @@
 import inspect
+import types
 import itertools
 from collections import defaultdict
 
 from lampost.di.resource import Injected, module_inject
 from lampost.gameops import target_gen
+from lampost.gameops.script import script_builder
 from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
 from lampost.util.lputil import ClientError
@@ -189,8 +191,17 @@ class ActionProvider(metaclass=CoreMeta):
     def _pre_reload(self):
         self.instance_providers = []
 
-    def dynamic_action(self, func, verbs=None):
-        if not verbs:
-            verbs = func.__name__
-        action = InstanceAction(func, self, verbs)
-        self.instance_providers.append(action)
+
+@script_builder
+class ActionScriptBuilder:
+    name = 'action'
+
+    @staticmethod
+    def build(target, s_ref):
+        action_locals = {}
+        exec(s_ref.code, {}, action_locals)
+        action_func = next(iter(action_locals.values()))
+        action = obj_action(**s_ref.build_args)(action_func)
+        target_action = action.__get__(target)
+        target.__dict__[action_func.__name__] = target_action
+        target.instance_providers.append(target_action)
