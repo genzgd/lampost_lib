@@ -20,6 +20,10 @@ INVALID_OBJECT = "You can't {verb} {target} {prep} {object}."
 INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
 AMBIGUOUS_COMMAND = "Ambiguous command matches: {}"
 
+match_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity', 'prep',
+                  'action', 'verb', 'args', 'command']
+_keyword_set = set(match_keywords)
+
 
 def primary_actions(entity, verb):
     return itertools.chain.from_iterable(cache.primary(verb) for cache in entity.current_actions)
@@ -40,7 +44,6 @@ def find_targets(key_type, entity, target_key, target_class, action=None):
 class ActionMatch():
     target = None
     targets = []
-    target_key = None
     target_method = None
     target_methods = []
     target_index = 0
@@ -48,8 +51,6 @@ class ActionMatch():
     prep = None
     obj_key = None
     obj = None
-    object_method = None
-
     obj_method = None
 
     def __init__(self, action, verb, args):
@@ -178,14 +179,11 @@ class Parse:
             if len(all_targets) != len(target_matches):
                 self._ambiguous()
             match, match.target, method_ix = target_matches[target_index]
-            del match.targets
-            del match.target_index
             if match.target_methods:
                 match.target_method = match.target_methods[method_ix]
-                del match.target_methods
         elif len(self._matches) > 1:
             raise self._ambiguous()
-        return match.action, match.__dict__
+        return match.action, {key: value for key, value in match.__dict__.items() if key in _keyword_set}
 
     @match_filter
     def parse_targets(self, match):

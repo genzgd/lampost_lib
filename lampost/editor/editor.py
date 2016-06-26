@@ -17,15 +17,15 @@ class Editor(MethodHandler):
 
     def _all_holders(self, dbo_id):
         dbo_key = '{}:{}'.format(self.key_type, dbo_id)
-        all_obj_keys = {dbo_key}
+        all_dbo_keys = {dbo_key}
         all_holders = db.dbo_holders(dbo_key, 1)
         if self.children_types:
             for child_type in self.children_types:
                 child_keys = db.fetch_set_keys("{}_{}s:{}".format(self.key_type, child_type, dbo_id))
-                all_obj_keys.update(child_keys)
+                all_dbo_keys.update(child_keys)
                 for child_id in child_keys:
                     all_holders.update(db.dbo_holders('{}:{}'.format(child_type, child_id)))
-        return all_holders - all_obj_keys
+        return all_holders - all_dbo_keys
 
     def _reload_holders(self, holders):
         for holder_key in holders:
