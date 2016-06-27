@@ -20,9 +20,9 @@ INVALID_OBJECT = "You can't {verb} {target} {prep} {object}."
 INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
 AMBIGUOUS_COMMAND = "Ambiguous command matches: {}"
 
-match_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity', 'prep',
+action_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity', 'prep',
                   'action', 'verb', 'args', 'command']
-_keyword_set = set(match_keywords)
+_keyword_set = set(action_keywords)
 
 
 def primary_actions(entity, verb):
