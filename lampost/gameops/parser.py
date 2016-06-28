@@ -213,25 +213,19 @@ class Parse:
             match.targets = [target_key]
             return
         match.target_index, target_key = capture_index(target_key)
-        if target_key:
-            key_str = ' '.join(target_key)
-            found = list(find_targets('primary', self._entity, key_str, target_class, action))
-            if not found:
-                found = list(find_targets('abbrev', self._entity, key_str, target_class, action))
-            if not found:
-                return ABSENT_TARGET
-            seen = set()
-            targets = []
-            for target in found:
-                if target not in seen:
-                    targets.append(target)
-                    seen.add(target)
-        elif hasattr(action, 'self_target'):
-            targets = [self._entity]
-        elif target_gen.env in target_class:
-            targets = [self._entity.env]
-        else:
+
+        key_str = ' '.join(target_key)
+        found = list(find_targets('primary', self._entity, key_str, target_class, action))
+        if not found:
+            found = list(find_targets('abbrev', self._entity, key_str, target_class, action))
+        if not found:
             return MISSING_TARGET
+        seen = set()
+        targets = []
+        for target in found:
+            if target not in seen:
+                targets.append(target)
+                seen.add(target)
         targets = [target for target in targets if
                    not match.quantity or match.quantity <= getattr(target, 'quantity', 0)]
         if not targets:

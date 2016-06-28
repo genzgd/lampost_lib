@@ -3,7 +3,7 @@ import itertools
 from collections import defaultdict
 
 from lampost.di.resource import Injected, module_inject
-from lampost.gameops import target_gen
+from lampost.gameops import target, target_gen
 from lampost.gameops.script import script_builder
 from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
@@ -29,7 +29,7 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
         action.msg_class = msg_class
 
     if target_class:
-        action.target_class = target_gen.make(target_class)
+        action.target_class = target.make_gen(target_class)
     elif not hasattr(action, 'target_class'):
         try:
             args, var_args, var_kwargs, defaults = inspect.getargspec(action)
@@ -37,16 +37,16 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
             args, var_args, var_kwargs, defaults = inspect.getargspec(action.__call__)
         target_args = len(args) - len([arg for arg in args if arg in {'self', 'source', 'command', 'args', 'verb'}])
         if target_args:
-            action.target_class = target_gen.defaults
+            action.target_class = target.make_gen('default')
         elif not args or len(args) == 1 and args[0] == 'source':
             action.target_class = 'no_args'
 
     if prep:
         action.prep = prep
         if obj_target_class:
-            action.obj_target_class = target_gen.make(obj_target_class)
+            action.obj_target_class = target.make_gen(obj_target_class)
         elif not hasattr(action, 'obj_target_class'):
-            action.obj_target_class = target_gen.defaults
+            action.obj_target_class = target.make_gen('default')
         if obj_msg_class:
             action.obj_msg_class = obj_msg_class
     for arg_name, value in kw_args.items():

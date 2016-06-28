@@ -1,4 +1,9 @@
 import math
+from collections import Iterable
+
+import itertools
+
+target_generators = {}
 
 
 def _gen_keys(target_id):
@@ -38,8 +43,52 @@ class TargetKeys:
                 yield from _abbrev_keys(parts, ix)
 
 
-def test():
-    tk = TargetKeys()
-    tk.add('bright green chariot')
-    print (tk.primary)
-    print (list(tk.abbrev))
+def target_gen(func):
+    target_generators[func.__name__] = func
+    return func
+
+
+@target_gen
+def args(key_type, target_key, *_):
+    if target_key:
+        yield tuple(target_key.split(' '))
+
+
+@target_gen
+def self_default(key_type, target_key, entity, *_):
+    if not target_key:
+        yield entity
+
+
+_generator_cache = {}
+
+
+def make_gen(target_class, cache_key=None):
+    try:
+        return _generator_cache[target_class]
+    except KeyError:
+        pass
+    if hasattr(target_class, 'split'):
+        generator = []
+        for target_type in target_class.split(' '):
+            if target_type in _generator_cache:
+                generator.extend(_generator_cache[target_type])
+            else:
+                generator.append(target_generators[target_type])
+    elif isinstance(target_class, Iterable):
+        generator = target_class
+    else:
+        generator = target_class,
+    _generator_cache[cache_key if cache_key else target_class] = tuple(generator)
+    return generator
+
+
+def _recursive_targets(key_type, target_list, target_key):
+    for target in target_list:
+        try:
+            if target_key in getattr(target.target_keys, key_type):
+                yield target
+        except AttributeError:
+            pass
+        for sub_target in _recursive_targets(key_type, getattr(target, 'target_providers', ()), target_key):
+            yield sub_target
