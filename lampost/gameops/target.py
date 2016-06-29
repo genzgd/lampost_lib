@@ -108,20 +108,21 @@ _generator_cache = {}
 
 
 def make_gen(target_class, cache_key=None):
-    try:
-        return _generator_cache[target_class]
-    except KeyError:
-        pass
     if hasattr(target_class, 'split'):
-        generator = []
+        try:
+            return _generator_cache[target_class]
+        except KeyError:
+            pass
+        gen_funcs = []
         for target_type in target_class.split(' '):
             if target_type in _generator_cache:
-                generator.extend(_generator_cache[target_type])
+                gen_funcs.extend(_generator_cache[target_type])
             else:
-                generator.append(target_generators[target_type])
-    elif isinstance(target_class, Iterable):
-        generator = target_class
-    else:
-        generator = target_class,
-    _generator_cache[cache_key if cache_key else target_class] = tuple(generator)
-    return generator
+                gen_funcs.append(target_generators[target_type])
+        generator = tuple(gen_funcs)
+        _generator_cache[cache_key if cache_key else target_class] = generator
+        return generator
+
+    if isinstance(target_class, Iterable):
+        return target_class
+    return target_class,

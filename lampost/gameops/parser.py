@@ -1,26 +1,22 @@
 import itertools
 
-from lampost.di.resource import Injected, module_inject
 from lampost.gameops.action import action_verbs
-from lampost.util.lputil import find_extra, ClientError
-
-log = Injected('log')
-mud_actions = Injected('mud_actions')
-module_inject(__name__)
+from lampost.gameops.target import make_gen
+from lampost.util.lputil import ClientError
 
 MISSING_VERB = "Unrecognized command '{verb}'.  Perhaps you should try 'help'?"
-EXTRA_WORDS = "'{extra}' does not make sense with '{verb}'."
-MISSING_TARGET = "'{command}' what? or whom?"
-ABSENT_TARGET = "'{target}' is not here."
-ABSENT_OBJECT = "'{object}' is not here."
+EXTRA_WORDS = "'{target}' does not make sense with '{verb}'."
+MISSING_TARGET = MISSING_OBJECT = "'{command}' what? or whom?"
 MISSING_PREP = "'{prep}' missing from command."
+ABSENT_TARGET = "{target} is not here."
+ABSENT_OBJECT = "{object} is not here."
 INVALID_TARGET = "You can't {verb} {target}."
 INVALID_OBJECT = "You can't {verb} {target} {prep} {object}."
 INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
 AMBIGUOUS_COMMAND = "Ambiguous command matches: {}"
 
 action_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity', 'prep',
-                  'action', 'verb', 'args', 'command']
+                   'action', 'verb', 'args', 'command']
 _keyword_set = set(action_keywords)
 
 
@@ -40,15 +36,27 @@ def find_targets(key_type, entity, target_key, target_class, action=None):
     return itertools.chain.from_iterable([target_func(key_type, target_key, entity, action) for target_func in target_class])
 
 
+def find_invalid_target(target_key, entity, action):
+     bad_gen = make_gen('__invalid__')
+     bad_targets = find_targets('primary', entity, target_key, bad_gen, action)
+     try:
+         return next(bad_targets)
+     except StopIteration:
+        bad_targets = find_targets('abbrev', entity, target_key, bad_gen, action)
+        return next(bad_targets, None)
+
+
 class ActionMatch():
     target = None
+    target_key = ''
     targets = []
     target_method = None
     target_methods = []
     target_index = 0
     quantity = None
     prep = None
-    obj_key = ()
+    obj_args = ()
+    obj_key = ''
     obj = None
     obj_method = None
 
@@ -103,30 +111,29 @@ class Parse:
         last_reason = self._last_reason
         reject = self._last_reject
         if reject:
-            extra = find_extra(reject.verb, 0, self._command)
-            if extra:
-                extra = extra.strip()
             reject_format['quantity'] = reject.quantity
             reject_format['verb'] = reject.verb
-            reject_format['extra'] = extra
             reject_format['prep'] = reject.prep
-            if extra and reject.prep:
-                prep_ix = extra.find(reject.prep)
-                if prep_ix == -1:
-                    reject_format['target'] = extra
+            if last_reason == ABSENT_TARGET:
+                if reject.target_key:
+                    reject.target = find_invalid_target(reject.target_key, self._entity, reject)
+                    if reject.target:
+                        last_reason = INVALID_TARGET
+                    else:
+                        try:
+                            last_reason = reject.action.target_class[0].absent_msg
+                        except (IndexError, AttributeError):
+                            pass
                 else:
-                    reject_format['target'] = extra[:prep_ix].strip()
-                reject_format['object'] = extra[prep_ix + len(reject.prep):]
-            else:
-                reject_format['target'] = extra
-            if last_reason in (INVALID_TARGET, ABSENT_TARGET):
-                if not reject_format['target']:
                     last_reason = MISSING_TARGET
-                elif last_reason == ABSENT_TARGET:
-                    try:
-                        last_reason = reject.action.target_class[0].absent_msg
-                    except (IndexError, AttributeError):
-                        pass
+            reject_format['target'] = getattr(reject.target, 'name', reject.target_key)
+            if last_reason == ABSENT_OBJECT:
+                if reject.obj_key:
+                    reject.obj = find_invalid_target(reject.obj_key, self._entity, reject)
+                else:
+                    last_reason = MISSING_OBJECT
+            reject_format['object'] = getattr(reject.obj, 'name', reject.obj_key)
+
         raise ParseError(last_reason.format(**reject_format))
 
     def parse(self):
@@ -191,6 +198,7 @@ class Parse:
         if not target_class:
             return
         if target_class == 'no_args':
+            match.target_key = ' '.join(match.args)
             return EXTRA_WORDS if match.args else None
         target_key = match.args
         if hasattr(action, 'quantity'):
@@ -203,19 +211,18 @@ class Parse:
         if match.prep:
             try:
                 prep_loc = target_key.index(match.prep)
-                match.obj_key = target_key[(prep_loc + 1):]
+                match.obj_args = target_key[(prep_loc + 1):]
                 target_key = target_key[:prep_loc]
             except ValueError:
                 if not hasattr(action, 'self_object'):
                     return
         match.target_index, target_key = capture_index(target_key)
-
-        key_str = ' '.join(target_key)
+        match.target_key = key_str = ' '.join(target_key)
         found = tuple(find_targets('primary', self._entity, key_str, target_class, action))
         if not found:
             found = tuple(find_targets('abbrev', self._entity, key_str, target_class, action))
         if not found:
-            return MISSING_TARGET
+            return ABSENT_TARGET
         seen = set()
         targets = []
         for target in found:
@@ -240,19 +247,16 @@ class Parse:
         obj_class = getattr(match.action, 'obj_class', None)
         if not obj_class:
             return
-        obj_index, obj_key = capture_index(match.obj_key)
+        obj_index, obj_key = capture_index(match.obj_args)
 
-        key_str = ' '.join(obj_key)
+        match.obj_key = key_str = ' '.join(obj_key)
         objects = find_targets('primary', self._entity, key_str, obj_class)
-        try:
-            obj = next(itertools.islice(objects, obj_index, obj_index + 1))
-        except StopIteration:
+        obj = next(itertools.islice(objects, obj_index, obj_index + 1), None)
+        if not obj:
             objects = find_targets('abbrev', self._entity, key_str, obj_class)
-            try:
-                obj = next(itertools.islice(objects, obj_index, obj_index + 1))
-            except StopIteration:
-                return MISSING_TARGET
-
+            obj = next(itertools.islice(objects, obj_index, obj_index + 1), None)
+            if not obj:
+                return ABSENT_OBJECT
         obj_msg_class = getattr(match.action, 'obj_msg_class', None)
         if obj_msg_class:
             match.obj_method = getattr(obj, obj_msg_class, None)
