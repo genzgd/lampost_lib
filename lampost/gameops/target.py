@@ -1,8 +1,6 @@
 import math
 from collections import Iterable
 
-import itertools
-
 target_generators = {}
 
 
@@ -48,10 +46,56 @@ def target_gen(func):
     return func
 
 
+def recursive_targets(key_type, target_list, target_key):
+    for target in target_list:
+        try:
+            if target_key in getattr(target.target_keys, key_type):
+                yield target
+        except AttributeError:
+            pass
+        for sub_target in recursive_targets(key_type, getattr(target, 'target_providers', ()), target_key):
+            yield sub_target
+
+
 @target_gen
 def args(key_type, target_key, *_):
     if target_key:
         yield tuple(target_key.split(' '))
+
+
+@target_gen
+def self(key_type, target_key, entity, *_):
+    if target_key == 'self' or target_key in getattr(entity.target_keys, key_type):
+        yield entity
+
+
+@target_gen
+def func_owner(key_type, target_key, entity, action, *_):
+    return recursive_targets(key_type, [action.__self__], target_key)
+
+
+@target_gen
+def action(key_type, target_key, entity, action):
+    return recursive_targets(key_type, [action], target_key)
+
+
+@target_gen
+def action_owner(key_type, target_key, entity, action, *_):
+    try:
+        if target_key in getattr(action.owner.target_keys, key_type):
+            yield action.owner
+    except AttributeError:
+        pass
+
+
+@target_gen
+def func_providers(key_type, target_key, entity, action, *_):
+    for target in action.__self__.target_providers:
+        try:
+            if target_key in getattr(target.target_keys, key_type):
+                yield target
+        except AttributeError:
+            pass
 
 
 @target_gen
@@ -81,14 +125,3 @@ def make_gen(target_class, cache_key=None):
         generator = target_class,
     _generator_cache[cache_key if cache_key else target_class] = tuple(generator)
     return generator
-
-
-def _recursive_targets(key_type, target_list, target_key):
-    for target in target_list:
-        try:
-            if target_key in getattr(target.target_keys, key_type):
-                yield target
-        except AttributeError:
-            pass
-        for sub_target in _recursive_targets(key_type, getattr(target, 'target_providers', ()), target_key):
-            yield sub_target

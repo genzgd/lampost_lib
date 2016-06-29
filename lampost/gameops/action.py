@@ -3,7 +3,7 @@ import itertools
 from collections import defaultdict
 
 from lampost.di.resource import Injected, module_inject
-from lampost.gameops import target, target_gen
+from lampost.gameops import target
 from lampost.gameops.script import script_builder
 from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
@@ -21,7 +21,7 @@ def action_verbs(action):
 
 
 def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None,
-                obj_msg_class=None, obj_target_class=None, **kw_args):
+                obj_msg_class=None,  obj_class=None, **kw_args):
     if verbs:
         action.verbs = verbs
 
@@ -43,10 +43,10 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
 
     if prep:
         action.prep = prep
-        if obj_target_class:
-            action.obj_target_class = target.make_gen(obj_target_class)
-        elif not hasattr(action, 'obj_target_class'):
-            action.obj_target_class = target.make_gen('default')
+        if obj_class:
+            action.obj_class = target.make_gen(obj_class)
+        elif not hasattr(action, 'obj_class'):
+            action.obj_class = target.make_gen('default')
         if obj_msg_class:
             action.obj_msg_class = obj_msg_class
     for arg_name, value in kw_args.items():

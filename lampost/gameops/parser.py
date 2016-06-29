@@ -1,6 +1,5 @@
 import itertools
 
-from lampost.gameops import target_gen
 from lampost.di.resource import Injected, module_inject
 from lampost.gameops.action import action_verbs
 from lampost.util.lputil import find_extra, ClientError
@@ -49,7 +48,7 @@ class ActionMatch():
     target_index = 0
     quantity = None
     prep = None
-    obj_key = None
+    obj_key = ()
     obj = None
     obj_method = None
 
@@ -208,16 +207,13 @@ class Parse:
                 target_key = target_key[:prep_loc]
             except ValueError:
                 if not hasattr(action, 'self_object'):
-                    return MISSING_PREP
-        if target_class == 'args':
-            match.targets = [target_key]
-            return
+                    return
         match.target_index, target_key = capture_index(target_key)
 
         key_str = ' '.join(target_key)
-        found = list(find_targets('primary', self._entity, key_str, target_class, action))
+        found = tuple(find_targets('primary', self._entity, key_str, target_class, action))
         if not found:
-            found = list(find_targets('abbrev', self._entity, key_str, target_class, action))
+            found = tuple(find_targets('abbrev', self._entity, key_str, target_class, action))
         if not found:
             return MISSING_TARGET
         seen = set()
@@ -241,28 +237,21 @@ class Parse:
 
     @match_filter
     def parse_objects(self, match):
-        obj_target_class = getattr(match.action, 'obj_target_class', None)
-        if not obj_target_class:
-            return
-        if obj_target_class == 'args':
-            match.obj = match.obj_key
+        obj_class = getattr(match.action, 'obj_class', None)
+        if not obj_class:
             return
         obj_index, obj_key = capture_index(match.obj_key)
-        if obj_key:
-            key_str = ' '.join(obj_key)
-            objects = find_targets('primary', self._entity, key_str, obj_target_class)
+
+        key_str = ' '.join(obj_key)
+        objects = find_targets('primary', self._entity, key_str, obj_class)
+        try:
+            obj = next(itertools.islice(objects, obj_index, obj_index + 1))
+        except StopIteration:
+            objects = find_targets('abbrev', self._entity, key_str, obj_class)
             try:
                 obj = next(itertools.islice(objects, obj_index, obj_index + 1))
             except StopIteration:
-                objects = find_targets('abbrev', self._entity, key_str, obj_target_class)
-                try:
-                    obj = next(itertools.islice(objects, obj_index, obj_index + 1))
-                except StopIteration:
-                    return ABSENT_OBJECT
-        elif hasattr(match.action, 'self_object'):
-            obj = self._entity
-        else:
-            return MISSING_TARGET
+                return MISSING_TARGET
 
         obj_msg_class = getattr(match.action, 'obj_msg_class', None)
         if obj_msg_class:

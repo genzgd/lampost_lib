@@ -44,11 +44,11 @@ class Editor(MethodHandler):
 
     def initialize(self, key_type, imm_level='builder', create_level=None):
         self.key_type = key_type
-        self.obj_class = get_dbo_class(key_type)
+        self.dbo_class = get_dbo_class(key_type)
         self.imm_level = imm_level
         self.create_level = create_level if create_level else imm_level
-        if hasattr(self.obj_class, 'dbo_children_types'):
-            self.children_types = self.obj_class.dbo_children_types
+        if hasattr(self.dbo_class, 'dbo_children_types'):
+            self.children_types = self.dbo_class.dbo_children_types
 
     def list(self):
         return [self._edit_dto(obj) for obj in db.load_object_set(self.key_type) if obj.can_read(self.player)]
@@ -90,7 +90,7 @@ class Editor(MethodHandler):
 
     def metadata(self):
         return {'perms': self._permissions(), 'parent_type': self.parent_type, 'children_types': self.children_types,
-                'new_object': self.obj_class.new_dto()}
+                'new_object': self.dbo_class.new_dto()}
 
     def test_delete(self):
         return list(self._all_holders(self.raw['dbo_id']))
@@ -126,8 +126,8 @@ class Editor(MethodHandler):
 class ChildList(SessionHandler):
     def initialize(self, key_type):
         self.key_type = key_type
-        self.obj_class = get_dbo_class(key_type)
-        self.parent_type = self.obj_class.dbo_parent_type
+        self.dbo_class = get_dbo_class(key_type)
+        self.parent_type = self.dbo_class.dbo_parent_type
 
     def main(self, parent_id):
         parent = db.load_object(parent_id, self.parent_type)
@@ -148,7 +148,7 @@ class ChildList(SessionHandler):
 class ChildrenEditor(Editor):
     def initialize(self, key_type, imm_level='builder'):
         super().initialize(key_type, imm_level)
-        self.parent_type = self.obj_class.dbo_parent_type
+        self.parent_type = self.dbo_class.dbo_parent_type
 
     def _pre_create(self):
         parent_id = self.raw['dbo_id'].split(':')[0]
