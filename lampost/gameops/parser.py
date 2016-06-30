@@ -37,11 +37,11 @@ def find_targets(key_type, entity, target_key, target_class, action=None):
 
 
 def find_invalid_target(target_key, entity, action):
-     bad_gen = make_gen('__invalid__')
-     bad_targets = find_targets('primary', entity, target_key, bad_gen, action)
-     try:
-         return next(bad_targets)
-     except StopIteration:
+    bad_gen = make_gen('__invalid__')
+    bad_targets = find_targets('primary', entity, target_key, bad_gen, action)
+    try:
+        return next(bad_targets)
+    except StopIteration:
         bad_targets = find_targets('abbrev', entity, target_key, bad_gen, action)
         return next(bad_targets, None)
 
@@ -112,7 +112,8 @@ class Parse:
         reject = self._last_reject
         if reject:
             reject_format['quantity'] = reject.quantity
-            reject_format['verb'] = reject.verb
+            reject_format['verb'] = next((verb for verb in action_verbs(reject.action) if verb.startswith(reject.verb)),
+                                         reject.verb)
             reject_format['prep'] = reject.prep
             if last_reason == ABSENT_TARGET:
                 if reject.target_key:
@@ -215,7 +216,7 @@ class Parse:
                 target_key = target_key[:prep_loc]
             except ValueError:
                 if not hasattr(action, 'self_object'):
-                    return
+                    return MISSING_PREP
         match.target_index, target_key = capture_index(target_key)
         match.target_key = key_str = ' '.join(target_key)
         found = tuple(find_targets('primary', self._entity, key_str, target_class, action))
@@ -235,7 +236,8 @@ class Parse:
             return INSUFFICIENT_QUANTITY
         msg_class = getattr(match.action, 'msg_class', None)
         if msg_class:
-            target_methods = [(target, getattr(target, msg_class)) for target in targets if hasattr(target, msg_class)]
+            target_methods = [(target, getattr(target, msg_class)) for target in targets if
+                              getattr(target, msg_class, None)]
             if target_methods:
                 targets, match.target_methods = zip(*target_methods)
             else:
