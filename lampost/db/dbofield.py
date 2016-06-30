@@ -144,14 +144,14 @@ def get_hydrate_func(load_func, default, class_id):
     if not class_id:
         return lambda instance, dto_repr: dto_repr
     if isinstance(default, set):
-        return lambda instance, dto_repr_list: {dbo for dbo in [load_func(class_id, instance, dto_repr) for
-                                                                dto_repr in dto_repr_list] if dbo is not None}
+        return lambda instance, dto_repr_list: {dbo for dbo in (load_func(class_id, instance, dto_repr) for
+                                                                dto_repr in dto_repr_list) if dbo is not None}
     if isinstance(default, list):
-        return lambda instance, dto_repr_list: [dbo for dbo in [load_func(class_id, instance, dto_repr) for
-                                                                dto_repr in dto_repr_list] if dbo is not None]
+        return lambda instance, dto_repr_list: [dbo for dbo in (load_func(class_id, instance, dto_repr) for
+                                                                dto_repr in dto_repr_list) if dbo is not None]
     if isinstance(default, dict):
-        return lambda instance, dto_repr_dict: {key: dbo for key, dbo in [(key, load_func(class_id, instance, dto_repr))
-                                                                          for key, dto_repr in dto_repr_dict.items()] if
+        return lambda instance, dto_repr_dict: {key: dbo for key, dbo in ((key, load_func(class_id, instance, dto_repr))
+                                                                          for key, dto_repr in dto_repr_dict.items()) if
                                                 dbo is not None}
     return lambda instance, dto_repr: load_func(class_id, instance, dto_repr)
 
