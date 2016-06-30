@@ -160,18 +160,13 @@ def value_transform(trans_func, default, field, class_id, for_json=False):
     if not class_id:
         return lambda instance: getattr(instance, field)
     if isinstance(default, set) and not for_json:
-        return lambda instance: {trans_func(value, class_id) for value in getattr(instance, field) if value is not None}
+        return lambda instance: {res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None}
     if isinstance(default, list) or isinstance(default, set):
-        return lambda instance: [trans_func(value, class_id) for value in getattr(instance, field) if value is not None]
+        return lambda instance: [res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None]
     if isinstance(default, dict):
-        return lambda instance: {key: trans_func(value, class_id) for key, value in getattr(instance, field).items() if
-                                 value is not None}
+        return lambda instance: {key: res for key, res in ((key, trans_func(value, class_id)) for key, value in getattr(instance, field).items()) if res is not None}
 
-    def simple(instance):
-        value = getattr(instance, field)
-        return None if value is None else trans_func(value, class_id)
-
-    return simple
+    return lambda instance: trans_func(getattr(instance, field), class_id)
 
 
 def set_transform(trans_func, default, class_id):
@@ -185,7 +180,10 @@ def set_transform(trans_func, default, class_id):
 def to_dto_repr(dbo, class_id):
     if hasattr(dbo, 'dbo_id'):
         return dbo.dbo_key if class_id == 'untyped' else dbo.dbo_id
-    dto_value = dbo.dto_value
+    try:
+        dto_value = dbo.dto_value
+    except AttributeError:
+        return None
     if hasattr(dbo, 'template_key'):
         dto_value['tk'] = dbo.template_key
     elif getattr(dbo, 'class_id', class_id) != class_id:
@@ -199,7 +197,10 @@ def to_save_repr(dbo, class_id):
     if hasattr(dbo, 'dbo_id'):
         save_value_refs.current.append(dbo.dbo_key)
         return dbo.dbo_key if class_id == 'untyped' else dbo.dbo_id
-    save_value = dbo.save_value
+    try:
+        save_value = dbo.save_value
+    except AttributeError:
+        return None
     if hasattr(dbo, 'template_key'):
         save_value['tk'] = dbo.template_key
         save_value_refs.current.append(dbo.template_key)

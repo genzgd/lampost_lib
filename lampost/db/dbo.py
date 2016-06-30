@@ -11,7 +11,7 @@ db = Injected('datastore')
 module_inject(__name__)
 
 
-class DBOFacet(metaclass=CoreMeta):
+class DBOAspect(metaclass=CoreMeta):
     dbo_fields = {}
 
     @classmethod
@@ -43,7 +43,7 @@ class DBOFacet(metaclass=CoreMeta):
             setattr(cls, name, dbo_field)
 
 
-class CoreDBO(DBOFacet):
+class CoreDBO(DBOAspect):
     dbo_owner = None
 
     def on_loaded(self):
@@ -138,7 +138,7 @@ class CoreDBO(DBOFacet):
         return display
 
 
-class SystemDBO(DBOFacet):
+class SystemDBO(DBOAspect):
     def can_read(self, immortal):
         return True
 
@@ -146,7 +146,7 @@ class SystemDBO(DBOFacet):
         return perm.is_supreme(immortal) or immortal.imm_level > getattr(self, 'imm_level', 0)
 
 
-class OwnerDBO(DBOFacet):
+class OwnerDBO(DBOAspect):
     owner_id = DBOField('lampost')
     read_access = DBOField(0)
     write_access = DBOField(0)

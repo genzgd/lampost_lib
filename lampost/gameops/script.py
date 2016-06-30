@@ -5,7 +5,7 @@ from collections import defaultdict
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
-from lampost.db.dbo import DBOFacet, CoreDBO
+from lampost.db.dbo import DBOAspect, CoreDBO
 from lampost.db.dbofield import DBOField, DBOLField, DBOCField
 
 log = Injected('log')
@@ -94,7 +94,7 @@ class Shadow:
         return bound_chain
 
 
-class UserScript(DBOFacet):
+class UserScript(DBOAspect):
     title = DBOField('', required=True)
     builder = DBOField('', required=True)
     metadata = DBOField({})
@@ -149,7 +149,7 @@ class ScriptRef(CoreDBO):
             log.exception("Failed to build user script {}", self.dto_value)
 
 
-class Scriptable(DBOFacet):
+class Scriptable(DBOAspect):
     script_refs = DBOCField([], 'script_ref')
     shadow_chains = AutoField(defaultdict(list))
 
