@@ -70,22 +70,22 @@ def self(key_type, target_key, entity, *_):
 
 
 @target_gen
-def func_owner(key_type, target_key, entity, action, *_):
-    return recursive_targets(key_type, [action.__self__], target_key)
+def action_owner(key_type, target_key, entity, action, *_):
+    return recursive_targets(key_type, (action.__self__,), target_key)
+
+
+@target_gen
+def action_default(key_type, target_key, entity, action, *_):
+    if not target_key:
+        try:
+            yield action.__self__
+        except AttributeError:
+            yield action
 
 
 @target_gen
 def action(key_type, target_key, entity, action):
     return recursive_targets(key_type, [action], target_key)
-
-
-@target_gen
-def action_owner(key_type, target_key, entity, action, *_):
-    try:
-        if target_key in getattr(action.owner.target_keys, key_type):
-            yield action.owner
-    except AttributeError:
-        pass
 
 
 @target_gen

@@ -59,7 +59,7 @@ def obj_action(**kwargs):
         if 'verbs' not in kwargs:
             kwargs['verbs'] = func.__name__
         if 'target_class' not in kwargs:
-            kwargs['target_class'] = 'func_owner'
+            kwargs['target_class'] = 'action_owner'
         make_action(func, **kwargs)
         return func
     return decorator
@@ -88,17 +88,6 @@ def action_handler(func):
 class ActionError(ClientError):
     def __init__(self, msg=None, display=None):
         super().__init__(msg, display)
-
-
-class InstanceAction:
-    def __init__(self, func, owner, verbs=None):
-        self.func = func
-        self.owner = owner
-        make_action(self, verbs, target_class="action_owner")
-
-    def __call__(self, **kwargs):
-        kwargs['owner'] = self.owner
-        return self.func(**kwargs)
 
 
 class ActionCache:
