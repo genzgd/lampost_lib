@@ -50,6 +50,7 @@ class CoreDBO(DBOFacet):
         call_mro(self, '_on_loaded')
 
     def hydrate(self, dto):
+        missing_fields = []
         for field, dbo_field in self.dbo_fields.items():
             if field in dto:
                 dbo_value = dbo_field.hydrate(self, dto[field])
@@ -60,9 +61,12 @@ class CoreDBO(DBOFacet):
                 except AttributeError:
                     pass
             if not dbo_value and dbo_field.required:
-                log.warn("Missing required field {} in class {} dto {}", field, cls_name(self.__class__), dto)
-                return None
+                missing_fields.append(field)
         self.on_loaded()
+        if missing_fields:
+            log.warn("Missing required fields {} in class {} dto {}", ', '.join(missing_fields),
+                     cls_name(self.__class__), dto)
+            return None
         return self
 
     def reload(self):
