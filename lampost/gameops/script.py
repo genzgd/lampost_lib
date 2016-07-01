@@ -14,7 +14,7 @@ script_globals = {}
 module_inject(__name__)
 
 script_cache = {}
-builders = {}
+builders = set()
 
 
 @on_app_start
@@ -24,7 +24,7 @@ def _start():
 
 
 def script_builder(cls):
-    builders[cls.name] = cls
+    builders.add(cls)
     return cls
 
 
@@ -183,7 +183,7 @@ class ScriptShadow:
 
 @script_builder
 class ShadowBuilder:
-    name = "shadow"
+    dto = {'name': 'shadow', 'meta_default': {'cls_type': None, 'cls_shadow': None}}
 
     @staticmethod
     def build(target, s_ref):

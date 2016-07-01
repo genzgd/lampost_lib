@@ -6,6 +6,7 @@ from base64 import b64encode
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import on_config_change, config_value
+from lampost.event.zone import Attachable
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -52,7 +53,7 @@ class SessionManager():
 
     def start_session(self):
         session_id = self._get_next_id()
-        session = GameSession()
+        session = GameSession().attach()
         self.session_map[session_id] = session
         session.append({'connect': session_id})
         ev.dispatch('session_connect', session)
@@ -60,7 +61,7 @@ class SessionManager():
 
     def start_edit_session(self):
         session_id = self._get_next_id()
-        session = ClientSession()
+        session = ClientSession().attach()
         self.session_map[session_id] = session
         return session_id, session
 
@@ -152,7 +153,7 @@ class SessionManager():
             if session.ld_time:
                 if now - session.ld_time > self.link_dead_prune:
                     del self.session_map[session_id]
-                    session.disconnect()
+                    session.detach()
             elif session.request:
                 if now - session.attach_time >= self.link_idle_refresh:
                     session.append({"keep_alive": True})
@@ -167,26 +168,26 @@ class SessionManager():
         ev.dispatch('player_list', self.player_info_map)
 
 
-class ClientSession():
-    def __init__(self):
+class ClientSession(Attachable):
+    def _on_attach(self):
         self._pulse_reg = None
         self.attach_time = datetime.now()
         self.request = None
         self.ld_time = None
         self._reset()
 
-    def attach(self, request):
-        if self.request:
-            self.reattach(request)
-        else:
-            self.attach_time = datetime.now()
-            self.ld_time = None
-            self.request = request
+    def _on_detach(self):
+        ev.dispatch('session_disconnect', self)
 
-    def reattach(self, request):
-        self._push({'link_status': 'cancel'})
-        self.request = request
-        self._push({'link_status': 'good'})
+    def attach_request(self, request):
+        self.attach_time = datetime.now()
+        self.ld_time = None
+        if self.request:
+            self._push({'link_status': 'cancel'})
+            self.request = request
+            self.append({'link_status': 'good'})
+        else:
+            self.request = request
 
     def append(self, data):
         if data:
@@ -212,10 +213,6 @@ class ClientSession():
         self.ld_time = datetime.now()
         self.request = None
 
-    def disconnect(self):
-        ev.dispatch('session_disconnect', self)
-        ev.detach_events(self)
-
     def _push_output(self):
         if self.request:
             self._output.append({'link_status': "good"})
@@ -236,10 +233,12 @@ class ClientSession():
 
 
 class GameSession(ClientSession):
-    def __init__(self):
-        super().__init__()
+    def _on_attach(self):
         self.user = None
         self.player = None
+
+    def _on_detach(self):
+        ev.dispatch('player_logout', self)
 
     def connect_user(self, user):
         self.user = user
@@ -259,7 +258,7 @@ class GameSession(ClientSession):
                 status = "Active"
             else:
                 status = "Idle: " + str(idle // 60) + "m"
-        return {'status': status, 'name': self.player.name, 'loc': self.player.env.title}
+        return {'status': status, 'name': self.player.name, 'loc': self.player.location}
 
     def display_line(self, display_line):
         if not self._lines:
@@ -272,7 +271,3 @@ class GameSession(ClientSession):
         except AttributeError:
             self._status = status
             self.append({'status': status})
-
-    def disconnect(self):
-        ev.dispatch('player_logout', self)
-        super().disconnect()

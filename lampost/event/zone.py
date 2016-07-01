@@ -15,6 +15,7 @@ class Attachable(metaclass=CoreMeta):
         if not self.attached:
             self.attached = True
             call_mro(self, '_on_attach')
+        return self
 
     def detach(self):
         if self.attached:

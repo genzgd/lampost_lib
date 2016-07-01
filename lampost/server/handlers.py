@@ -102,7 +102,7 @@ class Link(RequestHandler):
         self.set_header('Content-Type', 'application/json')
         self.session = sm.get_session(self.request.headers.get('X-Lampost-Session'))
         if self.session:
-            self.session.attach(self)
+            self.session.attach_request(self)
         else:
             self.write(json_encode({'link_status': 'session_not_found'}))
             self.finish()

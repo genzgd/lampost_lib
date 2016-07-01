@@ -182,7 +182,7 @@ class ActionProvider(metaclass=CoreMeta):
 
 @script_builder
 class ActionScriptBuilder:
-    name = 'action'
+    dto = {'name': 'action', 'meta_default': {'action_args': ['source'], 'target_class': ['action_owner'], 'verbs': []}}
 
     @staticmethod
     def build(target, s_ref):
