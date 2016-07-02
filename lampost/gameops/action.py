@@ -39,7 +39,7 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
         if target_args:
             action.target_class = target.make_gen('default')
         elif not args or len(args) == 1 and args[0] == 'source':
-            action.target_class = 'no_args'
+            action.target_class = target.make_gen('no_args')
 
     if prep:
         action.prep = prep

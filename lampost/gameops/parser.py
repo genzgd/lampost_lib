@@ -5,7 +5,6 @@ from lampost.gameops.target import make_gen
 from lampost.util.lputil import ClientError
 
 MISSING_VERB = "Unrecognized command '{verb}'.  Perhaps you should try 'help'?"
-EXTRA_WORDS = "'{target}' does not make sense with '{verb}'."
 MISSING_TARGET = MISSING_OBJECT = "'{command}' what? or whom?"
 MISSING_PREP = "'{prep}' missing from command."
 ABSENT_TARGET = "{target} is not here."
@@ -195,12 +194,6 @@ class Parse:
     @match_filter
     def parse_targets(self, match):
         action = match.action
-        target_class = getattr(action, 'target_class', None)
-        if not target_class:
-            return
-        if target_class == 'no_args':
-            match.target_key = ' '.join(match.args)
-            return EXTRA_WORDS if match.args else None
         target_key = match.args
         if hasattr(action, 'quantity'):
             try:
@@ -209,7 +202,8 @@ class Parse:
             except (IndexError, ValueError):
                 pass
         match.prep = getattr(action, 'prep', None)
-        if match.prep:
+        target_class = getattr(action, 'target_class', _noop)
+        if match.prep and match.prep != '_implicit_':
             try:
                 prep_loc = target_key.index(match.prep)
                 match.obj_args = target_key[(prep_loc + 1):]
@@ -217,11 +211,24 @@ class Parse:
             except ValueError:
                 if not hasattr(action, 'self_object'):
                     return MISSING_PREP
-        match.target_index, target_key = capture_index(target_key)
-        match.target_key = key_str = ' '.join(target_key)
-        found = tuple(find_targets('primary', self._entity, key_str, target_class, action))
-        if not found:
-            found = tuple(find_targets('abbrev', self._entity, key_str, target_class, action))
+        try:
+            return target_class(match)
+        except TypeError:
+            pass
+        if match.prep == '_implicit_':
+            start, end = 1, len(target_key)
+        else:
+            start, end = len(target_key), len(target_key) + 1
+        found = ()
+        for ix in range(start, end):
+            match.target_index, temp_key = capture_index(target_key[:ix])
+            match.target_key = key_str = ' '.join(temp_key)
+            found = tuple(find_targets('primary', self._entity, key_str, target_class, action))
+            if not found:
+                found = tuple(find_targets('abbrev', self._entity, key_str, target_class, action))
+            if found:
+                match.obj_args = target_key[ix:]
+                break
         if not found:
             return ABSENT_TARGET
         seen = set()
@@ -246,11 +253,12 @@ class Parse:
 
     @match_filter
     def parse_objects(self, match):
-        obj_class = getattr(match.action, 'obj_class', None)
-        if not obj_class:
-            return
+        obj_class = getattr(match.action, 'obj_class', _noop)
+        try:
+            return obj_class(match)
+        except TypeError:
+            pass
         obj_index, obj_key = capture_index(match.obj_args)
-
         match.obj_key = key_str = ' '.join(obj_key)
         objects = find_targets('primary', self._entity, key_str, obj_class)
         obj = next(itertools.islice(objects, obj_index, obj_index + 1), None)
@@ -274,6 +282,10 @@ def parse_actions(entity, command):
 def parse_chat(verb, command):
     verb_ix = command.lower().index(verb) + len(verb)
     return command[verb_ix:].strip()
+
+
+def _noop(*_):
+    pass
 
 
 class ParseError(ClientError):

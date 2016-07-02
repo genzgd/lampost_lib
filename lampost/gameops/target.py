@@ -1,4 +1,7 @@
 import math
+import inspect
+
+from itertools import chain
 from collections import Iterable
 
 target_generators = {}
@@ -21,7 +24,8 @@ def _abbrev_keys(parts, key_ix):
         sub = parts[:key_ix] + [part[:pl]] + parts[key_ix + 1:]
         yield ' '.join(sub)
         if key_ix < len(sub) - 1:
-            yield from _abbrev_keys(sub, key_ix + 1)
+            for target in _abbrev_keys(sub, key_ix + 1):
+                yield target
 
 
 class TargetKeys:
@@ -38,11 +42,16 @@ class TargetKeys:
         for key in self.primary:
             parts = key.split()
             for ix in range(len(parts) - 1, -1, -1):
-                yield from _abbrev_keys(parts, ix)
+                for target in _abbrev_keys(parts, ix):
+                    yield target
 
 
 def target_gen(func):
-    target_generators[func.__name__] = func
+    args = inspect.getargspec(func)[0]
+    if len(args) == 1 and args[0] == 'match':
+        target_generators[func.__name__] = func
+    else:
+        target_generators[func.__name__] = func,
     return func
 
 
@@ -58,9 +67,24 @@ def recursive_targets(key_type, target_list, target_key):
 
 
 @target_gen
-def args(key_type, target_key, *_):
-    if target_key:
-        yield tuple(target_key.split(' '))
+def args(match):
+    if match.args:
+        match.target = match.args
+
+
+@target_gen
+def obj_args(match):
+    if match.obj_args:
+        match.obj = match.obj_args
+    else:
+        return "'{command}' what? or whom?"
+
+
+@target_gen
+def no_args(match):
+    if match.args:
+        match.target = ' '.join(match.args)
+        return "'{target}' does not make sense with '{verb}'."
 
 
 @target_gen
@@ -104,23 +128,15 @@ def self_default(key_type, target_key, entity, *_):
         yield entity
 
 
-_generator_cache = {}
-
-
 def make_gen(target_class, cache_key=None):
     if hasattr(target_class, 'split'):
         try:
-            return _generator_cache[target_class]
+            return target_generators[target_class]
         except KeyError:
             pass
-        gen_funcs = []
-        for target_type in target_class.split(' '):
-            if target_type in _generator_cache:
-                gen_funcs.extend(_generator_cache[target_type])
-            else:
-                gen_funcs.append(target_generators[target_type])
-        generator = tuple(gen_funcs)
-        _generator_cache[cache_key if cache_key else target_class] = generator
+        generator = tuple(
+            chain.from_iterable(target_generators[target_type] for target_type in target_class.split(' ')))
+        target_generators[cache_key if cache_key else target_class] = generator
         return generator
 
     if isinstance(target_class, Iterable):
