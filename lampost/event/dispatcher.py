@@ -60,13 +60,13 @@ class PulseDispatcher(Dispatcher):
         self.pulses_per_second = pulses_per_second
         self.current_pulse = start_pulse
 
-    def register_p(self, callback, pulses=0, seconds=0, randomize=0, priority=0, repeat=True):
+    def register_p(self, callback, pulses=0, seconds=0, randomize=0, priority=0, repeat=True, kwargs=None):
         if seconds:
             pulses = int(seconds * self.pulses_per_second)
             randomize = int(randomize * self.pulses_per_second)
         if randomize:
             randomize = randint(0, randomize)
-        registration = PulseRegistration(pulses, callback, priority=priority, repeat=repeat)
+        registration = PulseRegistration(pulses, callback, priority=priority, repeat=repeat, kwargs=kwargs)
         self._add_pulse(self.current_pulse + randomize, registration)
         return self._add_registration(registration)
 
@@ -74,14 +74,17 @@ class PulseDispatcher(Dispatcher):
         return self.register_p(repeat=False, *args, **kwargs)
 
     def future_pulse(self, seconds):
-        return int(self.current_pulse + self.pulses_per_second * seconds)
+        return self.current_pulse + int(self.pulses_per_second * seconds)
+
+    def seconds_to_pulse(self, seconds):
+        return int(self.pulses_per_second * seconds)
 
     def pulse(self):
         self.dispatch('pulse')
         for reg in sorted(self._pulse_map[self.current_pulse], key=lambda reg: reg.priority):
             if reg.freq:
                 try:
-                    reg.callback()
+                    reg.callback(**reg.kwargs)
                 except Exception:
                     log.exception('Pulse Error')
             if reg.repeat:

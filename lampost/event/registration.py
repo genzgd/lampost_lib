@@ -10,10 +10,14 @@ class Registration:
 
 
 class PulseRegistration(Registration):
-    def __init__(self, freq, callback, owner=None, priority=0, repeat=True):
+    kwargs = {}
+
+    def __init__(self, freq, callback, owner=None, priority=0, repeat=True, kwargs=None):
         super().__init__('pulse_i', callback, owner, priority)
         self.freq = freq
         self.repeat = repeat
+        if kwargs:
+            self.kwargs = kwargs
 
     def cancel(self):
         self.freq = 0
