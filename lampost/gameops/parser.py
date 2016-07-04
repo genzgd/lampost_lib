@@ -1,4 +1,5 @@
 import itertools
+from collections import deque
 
 from lampost.gameops.action import action_verbs
 from lampost.gameops.target import make_gen
@@ -14,7 +15,7 @@ INVALID_OBJECT = "You can't {verb} {target} {prep} {object}."
 INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
 AMBIGUOUS_COMMAND = "Ambiguous command matches: {}"
 
-action_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity', 'prep',
+action_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity',
                    'action', 'verb', 'args', 'command']
 _keyword_set = set(action_keywords)
 
@@ -47,22 +48,20 @@ def find_invalid_target(target_key, entity, action):
 
 class ActionMatch():
     target = None
-    target_key = ''
     targets = []
     target_method = None
     target_methods = []
     target_index = 0
     quantity = None
     prep = None
-    obj_args = ()
     obj_key = ''
     obj = None
     obj_method = None
 
-    def __init__(self, action, verb, args):
+    def __init__(self, action, verb, remaining):
         self.action = action
         self.verb = verb
-        self.args = args
+        self.remaining = remaining
 
 
 def match_filter(func):
@@ -74,27 +73,27 @@ def match_filter(func):
     return wrapper
 
 
-def capture_index(target_key):
+def capture_index(target_words):
     try:
-        ix = int(target_key[-1])
+        ix = int(target_words[-1])
         if ix > 0:
-            return ix - 1, target_key[:-1]
+            return ix - 1, target_words[:-1]
     except (TypeError, IndexError):
         pass
     except ValueError:
         try:
-            first_split = target_key[0].split('.')
-            return int(first_split[0]) - 1, (first_split[1],) + target_key[1:]
+            first_split = target_words[0].split('.')
+            return int(first_split[0]) - 1, (first_split[1],) + target_words[1:]
         except (ValueError, IndexError):
             pass
-    return 0, target_key
+    return 0, target_words
 
 
 class Parse:
     _matches = []
 
     def __init__(self, entity, command):
-        self._words = command.lower().split()
+        self._command = command
         self._entity = entity
         self._command = command
         self._last_reject = None
@@ -138,17 +137,21 @@ class Parse:
 
     def parse(self):
         matches = []
-        for verb_size in range(1, len(self._words) + 1):
-            verb = ' '.join(self._words[:verb_size])
-            args = tuple(self._words[verb_size:])
-            matches.extend([ActionMatch(action, verb, args) for action in primary_actions(self._entity, verb)])
+        remaining = self._command
+        verb_set = deque()
+        while True:
+            word, remaining = next_word(remaining)
+            verb_set.append(word)
+            verb = ' '.join(verb_set)
+            matches.extend(ActionMatch(action, verb, remaining) for action in primary_actions(self._entity, verb))
+            if not remaining:
+                break
         self._matches = self._entity.filter_actions(matches)
         result = self._process_matches()
         if result:
             return result
-        verb = self._words[0]
-        args = tuple(self._words[1:])
-        matches = [ActionMatch(action, verb, args) for action in abbrev_actions(self._entity, verb)]
+        verb, remaining = next_word(self._command)
+        matches = [ActionMatch(action, verb, remaining) for action in abbrev_actions(self._entity, verb)]
         self._matches = self._entity.filter_actions(matches)
         result = self._process_matches()
         if result:
@@ -194,41 +197,51 @@ class Parse:
     @match_filter
     def parse_targets(self, match):
         action = match.action
-        target_key = match.args
+        target_str = match.remaining
         if hasattr(action, 'quantity'):
             try:
-                match.quantity = int(match.args[0])
-                target_key = match.args[1:]
+                qty, remaining = next_word(target_str)
+                match.quantity = int(qty)
+                target_str = match.remaining = remaining
             except (IndexError, ValueError):
                 pass
-        match.prep = getattr(action, 'prep', None)
-        target_class = getattr(action, 'target_class', _noop)
-        if match.prep and match.prep != '_implicit_':
+        prep = getattr(action, 'prep', None)
+        if prep and prep != '_implicit_':
             try:
-                prep_loc = target_key.index(match.prep)
-                match.obj_args = target_key[(prep_loc + 1):]
-                target_key = target_key[:prep_loc]
+                prep_loc = target_str.index(match.prep)
+                match.remaining = target_str[prep_loc + len(match.prep) + 1:]
+                target_str = target_str[:prep_loc]
             except ValueError:
                 if not hasattr(action, 'self_object'):
+                    match.prep = prep
                     return MISSING_PREP
+        target_class = getattr(action, 'target_class', _noop)
+        match.target_str = target_str
         try:
             return target_class(match)
         except TypeError:
             pass
-        if match.prep == '_implicit_':
-            start, end = 1, len(target_key)
-        else:
-            start, end = len(target_key), len(target_key) + 1
+
         found = ()
-        for ix in range(start, end):
-            match.target_index, temp_key = capture_index(target_key[:ix])
+
+        def _find(target_words):
+            nonlocal found
+            match.target_index, temp_key = capture_index(target_words)
             match.target_key = key_str = ' '.join(temp_key)
             found = tuple(find_targets('primary', self._entity, key_str, target_class, action))
             if not found:
                 found = tuple(find_targets('abbrev', self._entity, key_str, target_class, action))
-            if found:
-                match.obj_args = target_key[ix:]
-                break
+
+        if prep == '_implicit_':
+            word_set = deque()
+            while True:
+                word, match.remaining = next_word(target_str)
+                word_set.append(word.lower())
+                _find(word_set)
+                if found or not match.remaining:
+                    break
+        else:
+            _find(target_str.lower().split(' '))
         if not found:
             return ABSENT_TARGET
         seen = set()
@@ -258,7 +271,7 @@ class Parse:
             return obj_class(match)
         except TypeError:
             pass
-        obj_index, obj_key = capture_index(match.obj_args)
+        obj_index, obj_key = capture_index(match.remaining.lower().split(' '))
         match.obj_key = key_str = ' '.join(obj_key)
         objects = find_targets('primary', self._entity, key_str, obj_class)
         obj = next(itertools.islice(objects, obj_index, obj_index + 1), None)
@@ -274,6 +287,12 @@ class Parse:
                 return INVALID_OBJECT
         match.obj = obj
 
+
+def next_word(text):
+    next_space = text.find(' ')
+    if next_space == -1:
+        next_space = len(text) + 1
+    return text[:next_space], text[next_space + 1:].strip()
 
 def parse_actions(entity, command):
     return Parse(entity, command).parse()

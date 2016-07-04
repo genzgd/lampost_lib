@@ -32,14 +32,13 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
         action.target_class = target.make_gen(target_class)
     elif not hasattr(action, 'target_class'):
         try:
-            args, var_args, var_kwargs, defaults = inspect.getargspec(action)
+            args = inspect.getargspec(action)[0]
         except TypeError:
-            args, var_args, var_kwargs, defaults = inspect.getargspec(action.__call__)
-        target_args = len(args) - len([arg for arg in args if arg in {'self', 'source', 'command', 'args', 'verb'}])
-        if target_args:
-            action.target_class = target.make_gen('default')
-        elif not args or len(args) == 1 and args[0] == 'source':
+            args = inspect.getargspec(action.__call__)[0]
+        if not args or len(args) == 1 and args[0] == 'source':
             action.target_class = target.make_gen('no_args')
+        else:
+            action.target_class = target.make_gen('default')
 
     if prep:
         action.prep = prep
