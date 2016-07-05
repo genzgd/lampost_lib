@@ -15,9 +15,7 @@ INVALID_OBJECT = "You can't {verb} {target} {prep} {object}."
 INSUFFICIENT_QUANTITY = "Not enough there to {verb} {quantity}."
 AMBIGUOUS_COMMAND = "Ambiguous command matches: {}"
 
-action_keywords = ['source', 'target', 'obj', 'target_method', 'obj_method', 'quantity',
-                   'action', 'verb', 'args', 'command']
-_keyword_set = set(action_keywords)
+action_keywords = ['source', 'target', 'obj', 'quantity']
 
 
 def primary_actions(entity, verb):
@@ -50,8 +48,6 @@ class ActionMatch():
     target = None
     target_key = ''
     targets = []
-    target_method = None
-    target_methods = []
     target_index = 0
     quantity = None
     prep = None
@@ -59,7 +55,8 @@ class ActionMatch():
     obj = None
     obj_method = None
 
-    def __init__(self, action, verb, remaining):
+    def __init__(self, source, action, verb, remaining):
+        self.source = source
         self.action = action
         self.verb = verb
         self.remaining = remaining
@@ -96,7 +93,6 @@ class Parse:
     def __init__(self, entity, command):
         self._command = command
         self._entity = entity
-        self._command = command
         self._last_reject = None
         self._primary_parsed = False
         self._last_reason = MISSING_VERB
@@ -146,7 +142,7 @@ class Parse:
             word, remaining = next_word(remaining)
             verb_set.append(word)
             verb = ' '.join(verb_set)
-            matches.extend(ActionMatch(action, verb, remaining) for action in primary_actions(self._entity, verb))
+            matches.extend(ActionMatch(self._entity, action, verb, remaining) for action in primary_actions(self._entity, verb))
             if not remaining:
                 break
         self._matches = self._entity.filter_actions(matches)
@@ -155,7 +151,7 @@ class Parse:
             return result
         self._primary_parsed = True
         verb, remaining = next_word(self._command)
-        matches = [ActionMatch(action, verb, remaining) for action in abbrev_actions(self._entity, verb)]
+        matches = [ActionMatch(self._entity, action, verb, remaining) for action in abbrev_actions(self._entity, verb)]
         self._matches = self._entity.filter_actions(matches)
         result = self._process_matches()
         if result:
@@ -179,24 +175,22 @@ class Parse:
         match = self._matches[0]
         if match.targets:
             target_index = match.target_index
-            target_matches = [(match, target, ix) for ix, target in enumerate(match.targets)]
+            target_matches = [(match, target) for target in match.targets]
             all_targets = set(match.targets)
             for match in self._matches[1:]:
                 if not match.targets or match.target_index != target_index:
                     self._ambiguous()
-                target_matches.extend([(match, target, ix) for ix, target in enumerate(match.targets)])
+                target_matches.extend(((match, target) for target in match.targets))
                 all_targets.update(match.targets)
             if target_index >= len(target_matches):
                 self._reject(INVALID_TARGET, match)
                 return
             if len(all_targets) != len(target_matches):
                 self._ambiguous()
-            match, match.target, method_ix = target_matches[target_index]
-            if match.target_methods:
-                match.target_method = match.target_methods[method_ix]
+            match, match.target = target_matches[target_index]
         elif len(self._matches) > 1:
             raise self._ambiguous()
-        return match.action, {key: value for key, value in match.__dict__.items() if key in _keyword_set}
+        return match.action, {key: getattr(match, key) for key in match.action.match_args}
 
     @match_filter
     def parse_targets(self, match):
@@ -214,9 +208,9 @@ class Parse:
             match.remaining = ''
         elif prep != '_implicit_':
             try:
-                prep_loc = target_str.index(match.prep)
-                match.remaining = target_str[prep_loc + len(match.prep) + 1:]
-                target_str = target_str[:prep_loc]
+                prep_loc = target_str.index(prep)
+                match.remaining = target_str[prep_loc + len(prep) + 1:]
+                target_str = target_str[:prep_loc].strip()
             except ValueError:
                 if not hasattr(action, 'self_object'):
                     match.prep = prep
@@ -263,11 +257,8 @@ class Parse:
             return INSUFFICIENT_QUANTITY
         msg_class = getattr(match.action, 'msg_class', None)
         if msg_class:
-            target_methods = [(target, getattr(target, msg_class)) for target in targets if
-                              getattr(target, msg_class, None)]
-            if target_methods:
-                targets, match.target_methods = zip(*target_methods)
-            else:
+            targets = [target for target in targets if getattr(target, msg_class, None) is not None]
+            if not targets:
                 return INVALID_TARGET
         match.targets = targets
 
@@ -288,9 +279,7 @@ class Parse:
             if not obj:
                 return ABSENT_OBJECT
         obj_msg_class = getattr(match.action, 'obj_msg_class', None)
-        if obj_msg_class:
-            match.obj_method = getattr(obj, obj_msg_class, None)
-            if match.obj_method is None:
+        if obj_msg_class and getattr(obj, obj_msg_class, None) is None:
                 return INVALID_OBJECT
         match.obj = obj
 
@@ -302,7 +291,7 @@ def next_word(text):
     return text[:next_space], text[next_space + 1:].strip()
 
 def parse_actions(entity, command):
-    return Parse(entity, command).parse()
+    return Parse(entity, command.strip()).parse()
 
 
 def parse_chat(verb, command):

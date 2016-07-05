@@ -27,14 +27,18 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, obj_class
     if msg_class:
         action.msg_class = msg_class
 
+    match_args = getattr(action, 'match_args', None)
+    if not match_args:
+        try:
+            match_args = inspect.getargspec(action)[0]
+        except TypeError:
+            match_args = inspect.getargspec(action.__call__)[0]
+        action.match_args = match_args
+
     if target_class:
         action.target_class = target.make_gen(target_class)
     elif not hasattr(action, 'target_class'):
-        try:
-            args = inspect.getargspec(action)[0]
-        except TypeError:
-            args = inspect.getargspec(action.__call__)[0]
-        if not args or len(args) == 1 and args[0] == 'source':
+        if not match_args or len(match_args) == 1 and match_args[0] == 'source':
             action.target_class = target.make_gen('no_args')
         else:
             action.target_class = target.make_gen('default')
