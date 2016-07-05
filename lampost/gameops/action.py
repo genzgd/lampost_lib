@@ -20,11 +20,10 @@ def action_verbs(action):
     return verbs
 
 
-def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None,
-                obj_msg_class=None,  obj_class=None, **kw_args):
+def make_action(action, verbs=None, msg_class=None, target_class=None, obj_class=None, **kw_args):
+
     if verbs:
         action.verbs = verbs
-
     if msg_class:
         action.msg_class = msg_class
 
@@ -40,16 +39,16 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, prep=None
         else:
             action.target_class = target.make_gen('default')
 
-    if prep:
-        action.prep = prep
-        if obj_class:
-            action.obj_class = target.make_gen(obj_class)
-        elif not hasattr(action, 'obj_class'):
-            action.obj_class = target.make_gen('default')
-        if obj_msg_class:
-            action.obj_msg_class = obj_msg_class
+    if obj_class:
+        action.obj_class = target.make_gen(obj_class)
+
     for arg_name, value in kw_args.items():
         setattr(action, arg_name, value)
+
+    if hasattr(action, 'prep') and not hasattr(action, 'obj_class'):
+        action.obj_class = target.make_gen('default')
+    if hasattr(action, 'obj_class') and not hasattr(action, 'prep'):
+        action.prep = '_implicit_'
     return action
 
 

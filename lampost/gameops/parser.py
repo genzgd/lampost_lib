@@ -48,6 +48,7 @@ def find_invalid_target(target_key, entity, action):
 
 class ActionMatch():
     target = None
+    target_key = ''
     targets = []
     target_method = None
     target_methods = []
@@ -97,12 +98,14 @@ class Parse:
         self._entity = entity
         self._command = command
         self._last_reject = None
+        self._primary_parsed = False
         self._last_reason = MISSING_VERB
 
     def _reject(self, last_reason, reject):
         self._matches.remove(reject)
-        self._last_reject = reject
-        self._last_reason = last_reason
+        if not self._primary_parsed or not self._last_reject:
+            self._last_reject = reject
+            self._last_reason = last_reason
 
     def _raise_error(self):
         reject_format = {'command': self._command, 'verb': self._command.split(' ')[0]}
@@ -150,6 +153,7 @@ class Parse:
         result = self._process_matches()
         if result:
             return result
+        self._primary_parsed = True
         verb, remaining = next_word(self._command)
         matches = [ActionMatch(action, verb, remaining) for action in abbrev_actions(self._entity, verb)]
         self._matches = self._entity.filter_actions(matches)
@@ -206,7 +210,9 @@ class Parse:
             except (IndexError, ValueError):
                 pass
         prep = getattr(action, 'prep', None)
-        if prep and prep != '_implicit_':
+        if not prep:
+            match.remaining = ''
+        elif prep != '_implicit_':
             try:
                 prep_loc = target_str.index(match.prep)
                 match.remaining = target_str[prep_loc + len(match.prep) + 1:]
@@ -215,8 +221,9 @@ class Parse:
                 if not hasattr(action, 'self_object'):
                     match.prep = prep
                     return MISSING_PREP
-        target_class = getattr(action, 'target_class', _noop)
         match.target_str = target_str
+        target_class = getattr(action, 'target_class', _noop)
+
         try:
             return target_class(match)
         except TypeError:
@@ -235,7 +242,7 @@ class Parse:
         if prep == '_implicit_':
             word_set = deque()
             while True:
-                word, match.remaining = next_word(target_str)
+                word, match.remaining = next_word(match.remaining)
                 word_set.append(word.lower())
                 _find(word_set)
                 if found or not match.remaining:

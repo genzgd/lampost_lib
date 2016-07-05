@@ -68,13 +68,14 @@ def recursive_targets(key_type, target_list, target_key):
 
 @target_gen
 def extra(match):
-    if match.remaining:
-        if match.target or match.targets:
+    if match.target or match.targets:
+        if match.remaining:
             match.obj = match.remaining
-        else:
-            match.target = match.remaining
-    else:
-        return "'{command}' what? Or whom?"
+            return
+    elif match.target_str:
+        match.target = match.target_str
+        return
+    return "'{command}' what? Or whom?"
 
 
 @target_gen
@@ -87,8 +88,8 @@ def opt_extra(match):
 
 @target_gen
 def no_args(match):
-    if match.remaining:
-        match.target = match.remaining
+    if match.target_str:
+        match.target = match.target_str
         return "'{target}' does not make sense with '{verb}'."
 
 
