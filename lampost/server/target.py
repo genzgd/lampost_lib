@@ -23,6 +23,9 @@ def player_id(key_type, target_key, *_):
         target_id = um.name_to_id(target_key)
         if um.player_exists(target_id):
             yield target_id
+    elif key_type == 'abbrev':
+        for abbrev_id in um.player_abbrev(target_key):
+            yield abbrev_id
 
 
 player_id.absent_msg = "Player {target} does not exist"

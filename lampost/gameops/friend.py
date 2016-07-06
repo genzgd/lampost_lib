@@ -1,5 +1,5 @@
 from lampost.di.app import on_app_start
-from lampost.server.user import User
+from lampost.server.domain import User
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import ConfigVal
 from lampost.util.lputil import ClientError

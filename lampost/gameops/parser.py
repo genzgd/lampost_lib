@@ -81,7 +81,7 @@ def capture_index(target_words):
     except ValueError:
         try:
             first_split = target_words[0].split('.')
-            return int(first_split[0]) - 1, (first_split[1],) + target_words[1:]
+            return int(first_split[0]) - 1, (first_split[1],) + tuple(target_words[1:])
         except (ValueError, IndexError):
             pass
     return 0, target_words
