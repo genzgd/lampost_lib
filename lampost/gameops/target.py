@@ -67,23 +67,16 @@ def recursive_targets(key_type, target_list, target_key):
 
 
 @target_gen
-def extra(match):
-    if match.target or match.targets:
-        if match.remaining:
-            match.obj = match.remaining
-            return
-    elif match.target_str:
-        match.target = match.target_str
-        return
-    return "'{command}' what? Or whom?"
+def obj_str(match):
+    if match.remaining:
+        match.obj = match.remaining
+    else:
+        return "'{command}' what? Or whom?"
 
 
 @target_gen
-def opt_extra(match):
-    if match.target or match.targets:
-        match.obj = match.remaining
-    else:
-        match.target = match.remaining
+def target_str_opt(match):
+    match.target = match.target_str
 
 
 @target_gen

@@ -37,23 +37,6 @@ def find_nth(haystack, needle, n):
     return start
 
 
-def find_extra_prep(prep, command):
-    start_ix = find_nth(command, prep, 1)
-    return command[start_ix + len(prep) + 1:]
-
-
-def find_extra(verb, used_args, command):
-    verb_len = len(verb.split(' '))
-    try:
-        arg_len = len(used_args)
-    except TypeError:
-        arg_len = used_args
-    find_loc = find_nth(command, " ", arg_len + verb_len)
-    if find_loc == -1:
-        return None
-    return command[find_loc + 1:]
-
-
 def javascript_safe(value):
     value = value.replace('"', '\\\"')
     value = value.replace("'", "\\'")
