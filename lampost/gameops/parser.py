@@ -207,13 +207,16 @@ class Parse:
         if not prep:
             match.remaining = ''
         elif prep != '_implicit_':
+            match.prep = prep
             try:
-                prep_loc = target_str.index(prep)
-                match.remaining = target_str[prep_loc + len(prep) + 1:]
+                prep_str = " {} ".format(prep)
+                prep_loc = target_str.index(prep_str)
+                match.remaining = target_str[prep_loc + len(prep) + 2:]
                 target_str = target_str[:prep_loc].strip()
             except ValueError:
-                if not hasattr(action, 'self_object'):
-                    match.prep = prep
+                if hasattr(action, 'self_object'):
+                    match.remaining = ''
+                else:
                     return MISSING_PREP
         match.target_str = target_str
         target_class = getattr(action, 'target_class', _noop)
@@ -278,10 +281,11 @@ class Parse:
             obj = next(itertools.islice(objects, obj_index, obj_index + 1), None)
             if not obj:
                 return ABSENT_OBJECT
+        match.obj = obj
         obj_msg_class = getattr(match.action, 'obj_msg_class', None)
         if obj_msg_class and getattr(obj, obj_msg_class, None) is None:
-                return INVALID_OBJECT
-        match.obj = obj
+            return INVALID_OBJECT
+
 
 
 def next_word(text):
@@ -290,13 +294,9 @@ def next_word(text):
         next_space = len(text) + 1
     return text[:next_space], text[next_space + 1:].strip()
 
+
 def parse_actions(entity, command):
     return Parse(entity, command.strip()).parse()
-
-
-def parse_chat(verb, command):
-    verb_ix = command.lower().index(verb) + len(verb)
-    return command[verb_ix:].strip()
 
 
 def _noop(*_):
