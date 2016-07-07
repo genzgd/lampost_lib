@@ -106,12 +106,6 @@ def player_exists(player_id):
     return db.object_exists("player", player_id)
 
 
-def player_abbrev(abbrev):
-    for player_id in db.fetch_set_keys('players'):
-        if player_id.startswith(abbrev):
-            yield player_id
-
-
 def _user_connect(user, client_data):
     client_data.update({'user_id': user.dbo_id, 'player_ids': user.player_ids, 'displays': user.displays,
                         'password_reset': user.password_reset, 'notifies': user.notifies})

@@ -51,6 +51,7 @@ class ActionMatch():
     target_index = 0
     quantity = None
     prep = None
+    obj_str = ''
     obj_key = ''
     obj = None
     obj_method = None
@@ -200,22 +201,22 @@ class Parse:
             try:
                 qty, remaining = next_word(target_str)
                 match.quantity = int(qty)
-                target_str = match.remaining = remaining
+                target_str = remaining
             except (IndexError, ValueError):
                 pass
         prep = getattr(action, 'prep', None)
-        if not prep:
-            match.remaining = ''
-        elif prep != '_implicit_':
+        if prep == '_implicit_':
+            match.obj_str = target_str
+        elif prep:
             match.prep = prep
             try:
                 prep_str = " {} ".format(prep)
                 prep_loc = target_str.index(prep_str)
-                match.remaining = target_str[prep_loc + len(prep) + 2:]
+                match.obj_str = target_str[prep_loc + len(prep) + 2:]
                 target_str = target_str[:prep_loc].strip()
             except ValueError:
                 if hasattr(action, 'self_object'):
-                    match.remaining = ''
+                    match.obj_str = ''
                 else:
                     return MISSING_PREP
         match.target_str = target_str
@@ -239,10 +240,10 @@ class Parse:
         if prep == '_implicit_':
             word_set = deque()
             while True:
-                word, match.remaining = next_word(match.remaining)
+                word, match.obj_str = next_word(match.obj_str)
                 word_set.append(word.lower())
                 _find(word_set)
-                if found or not match.remaining:
+                if found or not match.obj_str:
                     break
         else:
             _find(target_str.lower().split(' '))
@@ -272,7 +273,7 @@ class Parse:
             return obj_class(match)
         except TypeError:
             pass
-        obj_index, obj_key = capture_index(match.remaining.lower().split(' '))
+        obj_index, obj_key = capture_index(match.obj_str.lower().split(' '))
         match.obj_key = key_str = ' '.join(obj_key)
         objects = find_targets('primary', self._entity, key_str, obj_class)
         obj = next(itertools.islice(objects, obj_index, obj_index + 1), None)

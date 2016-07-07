@@ -33,6 +33,10 @@ def make_action(action, verbs=None, msg_class=None, target_class=None, obj_class
             match_args = inspect.getargspec(action)[0]
         except TypeError:
             match_args = inspect.getargspec(action.__call__)[0]
+        try:
+            match_args.remove('self')
+        except ValueError:
+            pass
         action.match_args = match_args
 
     if target_class:
