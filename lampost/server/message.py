@@ -23,8 +23,6 @@ def get_messages(player_id):
 
 
 def add_message(msg_type, content, player_id, source_id=None):
-    if is_blocked(player_id, source_id):
-        raise ActionError("You are blocked from sending messages to that player.")
     msg_id = db.db_counter("message_id")
     message = {'msg_type': msg_type, 'msg_id': msg_id, 'content': content, 'source': um.id_to_name(source_id)}
     timestamp(message)

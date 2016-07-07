@@ -1,4 +1,5 @@
 from lampost.di.app import on_app_start
+from lampost.gameops.action import ActionError
 from lampost.server.domain import User
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import ConfigVal
@@ -28,7 +29,7 @@ def _start():
 def friend_request(source, target):
     req_key = ':'.join([source.dbo_id, target.dbo_id])
     if db.set_key_exists(_REQUEST_KEY, req_key):
-        raise ClientError("You already have a friend request to {} outstanding.".format(target.name))
+        raise ActionError("You already have a friend request to {} outstanding.".format(target.name))
     ev.dispatch('player_message', 'friend_req', {'friend_id': source.dbo_id, 'friend_name': source.name},
                 target.dbo_id, source.dbo_id)
     db.add_set_key(_REQUEST_KEY, req_key)

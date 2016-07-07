@@ -71,7 +71,8 @@ def cmd_str(match):
     if match.targets or match.target:
         if match.obj_str:
             match.obj = match.obj_str
-            return
+        else:
+            return "'{command}' what?  Or whom?"
     elif match.target_str:
         match.target = match.target_str
     else:
