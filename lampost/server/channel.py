@@ -11,18 +11,16 @@ module_inject(__name__)
 
 
 class Channel():
-    def __init__(self, channel_type, instance_id=None, general=False, aliases=()):
+    def __init__(self, channel_type, instance_id=None, general=False, aliases=(), tag=''):
         if instance_id == 'next':
             instance_id = db.db_counter('channel')
-        make_action(self, (channel_type,) + aliases)
+        make_action(self, (channel_type,) + aliases, target_class='cmd_str')
         self.id = "{}_{}".format(channel_type, instance_id) if instance_id else channel_type
+        self.tag = tag
         cs.register_channel(self.id, general)
 
-    def __call__(self, source, command, **_):
-        space_ix = command.find(" ")
-        if space_ix == -1:
-            return source.display_line("Say what?")
-        self.send_msg(source.name + ":" + command[space_ix:])
+    def __call__(self, source, target):
+        self.send_msg('{}: {}'.format('{}{}'.format(self.tag, source.name), target))
 
     def send_msg(self, msg):
         cs.dispatch_message(self.id, msg)

@@ -50,9 +50,13 @@ def unblock_messages(player_id, source_id):
 
 
 def is_blocked(player_id, source_id):
-    if not source_id:
-        return False
-    return db.set_key_exists(_block_key(player_id), source_id)
+    if source_id:
+        return db.set_key_exists(_block_key(player_id), source_id)
+    return False
+
+
+def block_list(player_id):
+    return ' '.join([um.id_to_name(block_id) for block_id in db.fetch_set_keys(_block_key(player_id))])
 
 
 def _remove_player_messages(player_id):
