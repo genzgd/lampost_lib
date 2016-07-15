@@ -7,7 +7,7 @@ config_group.add_argument('-cid', '--config_id', help="database configuration id
 config_group.add_argument('-a', '--app_id', help="application module", default='lampmud.lpmud')
 
 log_group = parent_parser.add_argument_group(title="Logging Configuration")
-log_group.add_argument('-l', '--log', help="default logging level", default='info', dest='log_level')
+log_group.add_argument('-ll', '--log_level', help="default logging level", default='info', dest='log_level')
 log_group.add_argument('-lf', '--log_file', help="log output file", default=None)
 log_group.add_argument('-lm', '--log_mode', help="log file open mode", default='w')
 
@@ -23,6 +23,7 @@ main_parser = argparse.ArgumentParser(parents=[parent_parser], formatter_class=a
 web_group = main_parser.add_argument_group(title="Web Server Configuration")
 web_group.add_argument('-p', '--port', help="web server port", type=int, default=2500)
 web_group.add_argument('-si', help="web server network interface", default='127.0.0.1', metavar="NW_INT", dest="server_interface")
+web_group.add_argument('-wf', '--web_files', help="file system path for static web client", default='webclient')
 
 config_group.add_argument('-cd', '--config_dir', help="yaml configuration directory", default='conf')
 
