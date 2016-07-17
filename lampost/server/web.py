@@ -1,3 +1,5 @@
+import re
+
 from tornado.httpserver import HTTPServer
 from tornado.web import Application, URLSpec
 
@@ -6,10 +8,16 @@ from lampost.di.resource import Injected, module_inject
 log = Injected('log')
 module_inject(__name__)
 
+service_root = '/'
+
 _handlers = []
 
 
 def add_route(url_regex, handler, **kwargs):
+    add_raw_route(service_root + url_regex, handler, **kwargs)
+
+
+def add_raw_route(url_regex, handler, **kwargs):
     _handlers.append(URLSpec(url_regex, handler, kwargs))
 
 
