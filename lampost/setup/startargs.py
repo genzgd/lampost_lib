@@ -24,7 +24,7 @@ web_group = main_parser.add_argument_group(title="Web Server Configuration")
 web_group.add_argument('-p', '--port', help="web server port", type=int, default=2500)
 web_group.add_argument('-sr', '--service_root', help="base URL for web services", default='/')
 web_group.add_argument('-si', help="web server network interface", default='127.0.0.1', metavar="NW_INT", dest="server_interface")
-web_group.add_argument('-wf', '--web_files', help="file system path for static web client", default=None)
+web_group.add_argument('-wf', '--web_files', help="file system path for static web client", default='webclient')
 
 config_group.add_argument('-cd', '--config_dir', help="yaml configuration directory", default='conf')
 
