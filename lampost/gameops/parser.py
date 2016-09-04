@@ -141,7 +141,7 @@ class Parse:
         verb_set = deque()
         while True:
             word, remaining = next_word(remaining)
-            verb_set.append(word)
+            verb_set.append(word.lower())
             verb = ' '.join(verb_set)
             matches.extend(ActionMatch(self._entity, action, verb, remaining) for action in primary_actions(self._entity, verb))
             if not remaining:
@@ -151,7 +151,8 @@ class Parse:
         if result:
             return result
         self._primary_parsed = True
-        verb, remaining = next_word(self._command)
+        word, remaining = next_word(self._command)
+        verb = word.lower()
         matches = [ActionMatch(self._entity, action, verb, remaining) for action in abbrev_actions(self._entity, verb)]
         self._matches = self._entity.filter_actions(matches)
         result = self._process_matches()
