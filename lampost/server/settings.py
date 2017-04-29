@@ -98,8 +98,8 @@ class Settings(MethodHandler):
         db.save_object(self.session.user)
 
     def send_name(self):
-        email = self.raw['info'].lower()
-        user_id = db.get_index("ix:user:email", email)
+        user_email = self.raw['info'].lower()
+        user_id = db.get_index("ix:user:email", user_email)
         if not user_id:
             raise DataError("User Email Not Found")
         user = db.load_object(user_id, "user")
@@ -126,7 +126,7 @@ class Settings(MethodHandler):
         user.password = make_hash(temp_pw)
         user.password_reset = True
         db.save_object(user)
-        email.send_targeted_email('Your {} temporary password.'.format(lampost_title), email_msg, [user])
+        email.send_targeted_email('Your {} temporary password.'.format(lampost_title.value), email_msg, [user])
 
     def set_password(self):
         user = self.session.user
