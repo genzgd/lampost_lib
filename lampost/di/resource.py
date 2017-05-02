@@ -4,7 +4,6 @@ from collections import defaultdict
 
 log = logging.getLogger(__name__)
 
-context_initialized = False
 _registry = {}
 _consumer_map = defaultdict(list)
 
