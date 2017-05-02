@@ -3,7 +3,6 @@ import base64
 from smtplib import SMTPHeloError, SMTP, SMTPRecipientsRefused, SMTPSenderRefused, SMTPDataError, \
     SMTPAuthenticationError
 from threading import Thread
-from oauth2client.service_account import ServiceAccountCredentials
 
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
@@ -32,6 +31,7 @@ def _start():
 
 
 def _get_oauth_info():
+    from oauth2client.service_account import ServiceAccountCredentials
     scopes = ['https://mail.google.com/']
     credentials = ServiceAccountCredentials.from_json_keyfile_name('data/google_api.json', scopes=scopes)
     access_token_info = credentials.get_access_token()
