@@ -1,11 +1,29 @@
 from lampost.di.app import on_app_start
-from lampost.di.resource import Injected, module_inject
+from lampost.di.resource import Injected, module_inject, get_resource
 
 log = Injected('log')
 sm = Injected('session_manager')
 ev = Injected('dispatcher')
 perm = Injected('perm')
 module_inject(__name__)
+
+
+@on_app_start
+def _start():
+    ev.register('register_service', _register_service)
+    ev.register('unregister_service', _unregister_service)
+
+
+def _register_service(session, service_id, data=None, **_):
+    client_service = get_resource(service_id)
+    if client_service:
+        client_service.register(session, data)
+    else:
+        log.warn("Attempting registration for missing service {}", service_id)
+
+
+def _unregister_service(session, service_id, **_):
+    get_resource(service_id).unregister(session)
 
 
 class ClientService():
@@ -36,9 +54,9 @@ class PlayerListService(ClientService):
         super()._start()
         ev.register('player_list', self._process_list)
 
-    def register(self, session, data):
+    def register(self, session, data=None):
         super().register(session, data)
-        session.append({'player_list': sm.player_info_map})
+        session.append({'player_list': sm.player_info_map()})
 
     def _process_list(self, player_list):
         self._session_dispatch({'player_list': player_list})
