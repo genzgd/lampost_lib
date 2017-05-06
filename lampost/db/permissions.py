@@ -50,7 +50,7 @@ def has_perm(immortal, action):
 
 
 def check_perm(immortal, action):
-    if immortal.imm_level >= imm_levels['supreme']:
+    if not action or getattr(immortal, 'imm_level', 0) >= imm_levels['supreme']:
         return
     if isinstance(action, int):
         perm_required = action
@@ -63,7 +63,7 @@ def check_perm(immortal, action):
     else:
         imm_level = getattr(action, 'imm_level', 0)
         perm_required = imm_levels.get(imm_level, imm_level)
-    if immortal.imm_level < perm_required:
+    if getattr(immortal, 'imm_level', 0) < perm_required:
         raise PermError
 
 

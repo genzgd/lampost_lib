@@ -1,6 +1,7 @@
 import inspect
 
-from lampost.server.handlers import MethodHandler
+from lampost.di.app import on_app_start
+from lampost.server.link import LinkListener
 from lampost.di.resource import Injected, module_inject
 
 perm = Injected('perm')
@@ -21,14 +22,13 @@ def admin_op(func):
     return func
 
 
-class AdminHandler(MethodHandler):
+@on_app_start
+def _start():
+    LinkListener('admin_op', _admin_exec, 'supreme')
 
-    def operations(self):
-        perm.check_perm(self.player, 'supreme')
+
+def _admin_exec(name, params, **_):
+    if name == 'list':
         return [op['dto'] for op in admin_ops.values()]
-
-    def execute(self):
-        exec_op = self.raw
-        op = admin_ops[exec_op['name']]
-        return op['func'](*exec_op['params'])
-
+    op = admin_ops['name']
+    return op['func'](*params)

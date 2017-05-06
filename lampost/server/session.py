@@ -7,6 +7,7 @@ from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import on_config_change, config_value
 from lampost.event.zone import Attachable
+from lampost.server.link import LinkListener
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -27,8 +28,8 @@ _link_dead_interval = 0
 @on_app_start
 def _on_app_start():
     ev.register('player_logout', _player_logout)
-    ev.register('app_connect', _app_connect)
-    ev.register('app_login', _login)
+    LinkListener('app_connect', _app_connect)
+    LinkListener('app_login', _login)
     _config()
 
 
