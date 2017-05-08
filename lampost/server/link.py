@@ -54,7 +54,10 @@ class LinkListener:
         session = socket.session
         player = session and session.player
         perm.check_perm(player, self.perm_level)
-        response = self.handler(socket, session, player, **cmd) or {}
+        cmd['session'] = session
+        cmd['player'] = player
+        cmd['socket'] = socket
+        response = self.handler(**cmd) or {}
         if response:
             try:
                 response['req_id'] = req_id

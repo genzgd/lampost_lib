@@ -19,7 +19,7 @@ module_inject(__name__)
 _session_map = {}
 _player_info_map = {}
 _player_session_map = {}
-_link_reg = None
+_link_status_reg = None
 _broadcast_reg = None
 _link_dead_prune = 0
 _link_dead_interval = 0
@@ -35,23 +35,20 @@ def _on_app_start():
 
 @on_config_change
 def _on_config_change(self):
-    ev.unregister(self._link_reg)
+    ev.unregister(self._link_status_reg)
     ev.unregister(self._broadcast_reg)
     _config()
 
 
 def _config():
-    global _link_reg, _broadcast_reg, _link_dead_interval, _link_dead_prune, _link_idle_refresh
-    refresh_link_interval = config_value('refresh_link_interval')
-    log.info("Registering refresh interval as {} seconds", refresh_link_interval)
-    _link_reg = ev.register_p(_refresh_link_status, seconds=refresh_link_interval)
+    global _link_status_reg, _broadcast_reg, _link_dead_interval, _link_dead_prune
+    check_link_interval = config_value('check_link_interval', 60)
+    log.info("Registering check link interval as {} seconds", check_link_interval)
+    _link_status_reg = ev.register_p(_check_link_status, seconds=check_link_interval)
     _broadcast_reg = ev.register_p(_broadcast_status, seconds=config_value('broadcast_interval'))
 
     _link_dead_prune = timedelta(seconds=config_value('link_dead_prune'))
     _link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
-    _link_idle_refresh = config_value('link_idle_refresh')
-    log.info("Link idle refresh set to {} seconds", _link_idle_refresh)
-    _link_idle_refresh = timedelta(seconds=_link_idle_refresh)
 
 
 def get_session(session_id):
@@ -186,17 +183,14 @@ def _get_next_id():
     return u_session_id
 
 
-def _refresh_link_status():
+def _check_link_status():
     now = datetime.now()
     for session_id, session in _session_map.items():
         if session.ld_time:
             if now - session.ld_time > _link_dead_prune:
                 del _session_map[session_id]
                 session.detach()
-        elif session.socket:
-            if now - session.attach_time >= _link_idle_refresh:
-                session.append({"keep_alive": True})
-        elif now - session.attach_time > _link_dead_interval:
+        elif not session.socket and now - session.attach_time > _link_dead_interval:
             session.link_failed("Timeout")
 
 
@@ -226,7 +220,6 @@ class ClientSession(Attachable):
             self.append({'link_status': 'cancel'})
             self.flush()
         self.socket = socket
-        self.append({'link_status': 'good'})
 
     def append(self, data):
         self._output.append(data)

@@ -27,7 +27,9 @@ def _start():
     LinkListener('admin_op', _admin_exec, 'supreme')
 
 
-def _admin_exec(name, params, **_):
+def _admin_exec(name, params=None, **_):
+    if params is None:
+        params = []
     if name == 'list':
         return [op['dto'] for op in admin_ops.values()]
     op = admin_ops['name']
