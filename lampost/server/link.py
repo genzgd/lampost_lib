@@ -21,10 +21,10 @@ class LinkHandler(WebSocketHandler):
         pass
 
     def on_message(self, message):
-        command = json_decode(message)
-        req_id = command.get('req_id', None)
+        cmd = json_decode(message)
+        req_id = cmd.get('req_id', None)
         try:
-            ev.dispatch(command['id'], socket=self, **command)
+            ev.dispatch(cmd['cmd_id'], socket=self, **cmd)
         except Exception as e:
             error_response = {'req_id': req_id}
             if isinstance(e, ClientError):
@@ -45,16 +45,16 @@ class LinkHandler(WebSocketHandler):
 
 
 class LinkListener:
-    def __init__(self, command_id, handler, perm_level=None):
+    def __init__(self, cmd_id, handler, perm_level=None):
         self.handler = handler
         self.perm_level = perm_level
-        ev.register(command_id, self._handle)
+        ev.register(cmd_id, self._handle)
 
-    def _handle(self, socket, req_id=None, **command):
+    def _handle(self, socket, req_id=None, **cmd):
         session = socket.session
         player = session and session.player
         perm.check_perm(player, self.perm_level)
-        response = self.handler(socket, session, player, **command)
+        response = self.handler(socket, session, player, **cmd) or {}
         if response:
             try:
                 response['req_id'] = req_id
