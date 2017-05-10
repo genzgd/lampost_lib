@@ -43,7 +43,7 @@ def _app_connect(socket, session_id=None, player_id=None, **_):
     if session_id:
         session = _reconnect_session(session_id, player_id)
     else:
-        session = _start_session()
+        session = _start_app_session()
     session.attach_socket(socket)
     session.flush()
 
@@ -97,7 +97,7 @@ def _config():
     _link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
 
 
-def _start_session():
+def _start_app_session():
     session_id = _get_next_id()
     session = AppSession().attach()
     _session_map[session_id] = session
@@ -106,17 +106,17 @@ def _start_session():
     return session
 
 
-def start_edit_session(self):
-    session_id = self._get_next_id()
+def start_session():
+    session_id = _get_next_id()
     session = ClientSession().attach()
-    self.session_map[session_id] = session
+    _session_map[session_id] = session
     return session_id, session
 
 
 def _reconnect_session(session_id, player_id):
     session = get_session(session_id)
     if not session or not session.ld_time or not session.player or session.player.dbo_id != player_id:
-        return _start_session()
+        return _start_app_session()
     stale_output = session.pull_output()
     client_data = {}
     session.append({'connect': session_id})

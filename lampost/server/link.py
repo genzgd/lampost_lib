@@ -1,4 +1,6 @@
-import sys, inspect
+import sys
+
+from collections import namedtuple
 
 from tornado.websocket import WebSocketHandler
 
@@ -23,10 +25,9 @@ def _add_routes():
         module = sys.modules[module_name]
         root_path = root_path or module_name.split('.')[-1]
         for name, prop in module.__dict__.items():
-            if not name.startswith('_') and hasattr(prop, '__call__') and inspect.getmodule(prop) == module:
+            if not name.startswith('_') and hasattr(prop, '__call__') and getattr(prop, '__module__') == module_name:
                 route_path = '{}/{}'.format(root_path, name)
-                _routes[route_path] = LinkRoute(prop)
-    log.info("Completed adding routes")
+                _routes[route_path] = LinkRoute(prop, None)
 
 
 def link_route(path, perm_level=None):
@@ -40,7 +41,6 @@ def link_route(path, perm_level=None):
 
 def link_module(name, path=None):
     _route_modules.append((name, path))
-
 
 
 class LinkHandler(WebSocketHandler):
@@ -94,7 +94,4 @@ class LinkHandler(WebSocketHandler):
         log.info("Unexpected stream receive")
 
 
-class LinkRoute:
-    def __init__(self, handler, perm_level=None):
-        self.handler = handler
-        self.perm_level = perm_level
+LinkRoute = namedtuple('LinkRoute', 'handler perm_level')
