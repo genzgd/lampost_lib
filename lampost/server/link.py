@@ -1,5 +1,8 @@
+import sys, inspect
+
 from tornado.websocket import WebSocketHandler
 
+from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.util.lputil import ClientError
 
@@ -9,6 +12,35 @@ ev = Injected('dispatcher')
 json_decode = Injected('json_decode')
 json_encode = Injected('json_encode')
 module_inject(__name__)
+
+_routes = {}
+_route_modules = []
+
+
+@on_app_start
+def _add_routes():
+    for module_name, root_path in _route_modules:
+        module = sys.modules[module_name]
+        root_path = root_path or module_name.split('.')[-1]
+        for name, prop in module.__dict__.items():
+            if not name.startswith('_') and hasattr(prop, '__call__') and inspect.getmodule(prop) == module:
+                route_path = '{}/{}'.format(root_path, name)
+                _routes[route_path] = LinkRoute(prop)
+    log.info("Completed adding routes")
+
+
+def link_route(path, perm_level=None):
+    def wrapper(handler):
+        if path in _routes:
+            log.warn("Overwriting route for path {}", path)
+        _routes[path] = LinkRoute(handler, perm_level)
+
+    return wrapper
+
+
+def link_module(name, path=None):
+    _route_modules.append((name, path))
+
 
 
 class LinkHandler(WebSocketHandler):
@@ -23,17 +55,35 @@ class LinkHandler(WebSocketHandler):
     def on_message(self, message):
         cmd = json_decode(message)
         req_id = cmd.get('req_id', None)
+        path = cmd.get('path', None)
         try:
-            ev.dispatch(cmd['cmd_id'], socket=self, **cmd)
+            route = _routes.get(path)
+            if not route:
+                raise ClientError(client_message="No route for {}".format(path), http_status=404)
+            session = self.session
+            player = session and session.player
+            perm.check_perm(player, route.perm_level)
+            cmd['session'] = session
+            cmd['player'] = player
+            cmd['socket'] = self
+            data = route.handler(**cmd)
+            if data is not None or req_id is not None:
+                response = {'req_id': req_id}
+                if data is None:
+                    response['http_status'] = 204
+                else:
+                    response['http_status'] = 200
+                    response['data'] = data
+                self.write_message(json_encode(response))
         except Exception as e:
             error_response = {'req_id': req_id}
             if isinstance(e, ClientError):
-                error_response['status'] = e.http_status
+                error_response['http_status'] = e.http_status
                 error_response['client_message'] = e.client_message
             else:
                 error_response['status'] = 500
                 log.exception('Link Handler Exception', e)
-            if req_id:
+            if req_id is not None:
                 self.write_message(json_encode(error_response))
 
     def on_close(self):
@@ -44,23 +94,7 @@ class LinkHandler(WebSocketHandler):
         log.info("Unexpected stream receive")
 
 
-class LinkListener:
-    def __init__(self, cmd_id, handler, perm_level=None):
+class LinkRoute:
+    def __init__(self, handler, perm_level=None):
         self.handler = handler
         self.perm_level = perm_level
-        ev.register(cmd_id, self._handle)
-
-    def _handle(self, socket, req_id=None, **cmd):
-        session = socket.session
-        player = session and session.player
-        perm.check_perm(player, self.perm_level)
-        cmd['session'] = session
-        cmd['player'] = player
-        cmd['socket'] = socket
-        response = self.handler(**cmd) or {}
-        if response:
-            try:
-                response['req_id'] = req_id
-            except TypeError:
-                response = {'req_id': req_id, 'response': response}
-            socket.write_message(json_encode(response))

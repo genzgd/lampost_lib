@@ -1,7 +1,6 @@
 import inspect
 
-from lampost.di.app import on_app_start
-from lampost.server.link import LinkListener
+from lampost.server.link import link_route
 from lampost.di.resource import Injected, module_inject
 
 perm = Injected('perm')
@@ -22,11 +21,7 @@ def admin_op(func):
     return func
 
 
-@on_app_start
-def _start():
-    LinkListener('admin_op', _admin_exec, 'supreme')
-
-
+@link_route('admin_op', 'supreme')
 def _admin_exec(name, params=None, **_):
     if params is None:
         params = []

@@ -7,7 +7,7 @@ from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import on_config_change, config_value
 from lampost.event.zone import Attachable
-from lampost.server.link import LinkListener
+from lampost.server.link import link_route
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -28,8 +28,6 @@ _link_dead_interval = 0
 @on_app_start
 def _on_app_start():
     ev.register('player_logout', _player_logout)
-    LinkListener('app_connect', _app_connect)
-    LinkListener('app_login', _login)
     _config()
 
 
@@ -40,33 +38,7 @@ def _on_config_change(self):
     _config()
 
 
-def _config():
-    global _link_status_reg, _broadcast_reg, _link_dead_interval, _link_dead_prune
-    check_link_interval = config_value('check_link_interval', 60)
-    log.info("Registering check link interval as {} seconds", check_link_interval)
-    _link_status_reg = ev.register_p(_check_link_status, seconds=check_link_interval)
-    _broadcast_reg = ev.register_p(_broadcast_status, seconds=config_value('broadcast_interval'))
-
-    _link_dead_prune = timedelta(seconds=config_value('link_dead_prune'))
-    _link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
-
-
-def get_session(session_id):
-    return _session_map.get(session_id)
-
-
-def player_session(player_id):
-    return _player_session_map.get(player_id)
-
-
-def player_info_map():
-    return _player_info_map
-
-
-def logged_in_players():
-    return _player_session_map.keys()
-
-
+@link_route('app_connect')
 def _app_connect(socket, session_id=None, player_id=None, **_):
     if session_id:
         session = _reconnect_session(session_id, player_id)
@@ -76,7 +48,8 @@ def _app_connect(socket, session_id=None, player_id=None, **_):
     session.flush()
 
 
-def _login(session, user_name=None, password=None, **_):
+@link_route('player_login')
+def _player_login(session, user_name=None, password=None, **_):
     if not user_name or not password:
         session.append({'login_failure': 'Browser did not submit credentials, please retype'})
         return
@@ -95,6 +68,33 @@ def _login(session, user_name=None, password=None, **_):
         client_data = {}
         ev.dispatch('user_connect', user, client_data)
         session.append({'user_login': client_data})
+
+
+def get_session(session_id):
+    return _session_map.get(session_id)
+
+
+def player_session(player_id):
+    return _player_session_map.get(player_id)
+
+
+def player_info_map():
+    return _player_info_map
+
+
+def logged_in_players():
+    return set(_player_session_map.keys())
+
+
+def _config():
+    global _link_status_reg, _broadcast_reg, _link_dead_interval, _link_dead_prune
+    check_link_interval = config_value('check_link_interval', 60)
+    log.info("Registering check link interval as {} seconds", check_link_interval)
+    _link_status_reg = ev.register_p(_check_link_status, seconds=check_link_interval)
+    _broadcast_reg = ev.register_p(_broadcast_status, seconds=config_value('broadcast_interval'))
+
+    _link_dead_prune = timedelta(seconds=config_value('link_dead_prune'))
+    _link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
 
 
 def _start_session():
@@ -185,7 +185,7 @@ def _get_next_id():
 
 def _check_link_status():
     now = datetime.now()
-    for session_id, session in _session_map.items():
+    for session_id, session in _session_map.copy().items():
         if session.ld_time:
             if now - session.ld_time > _link_dead_prune:
                 del _session_map[session_id]
@@ -220,6 +220,7 @@ class ClientSession(Attachable):
             self.append({'link_status': 'cancel'})
             self.flush()
         self.socket = socket
+        socket.session = self
 
     def append(self, data):
         self._output.append(data)

@@ -56,9 +56,11 @@ class Blank():
 class ClientError(Exception):
     http_status = 400
 
-    def __init__(self, client_message="client_error", display=None):
+    def __init__(self, client_message="client_error", display=None, http_status=None):
         self.client_message = client_message
         self.display = display
+        if http_status:
+            self.http_status = http_status
 
 
 class PermError(ClientError):
