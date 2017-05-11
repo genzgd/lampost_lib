@@ -116,7 +116,9 @@ def start_session():
 def _reconnect_session(session_id, player_id):
     session = get_session(session_id)
     if not session or not session.ld_time or not session.player or session.player.dbo_id != player_id:
-        return _start_app_session()
+        new_session = _start_app_session()
+        new_session.append({'invalid_session': session_id})
+        return new_session
     stale_output = session.pull_output()
     client_data = {}
     session.append({'connect': session_id})
@@ -136,7 +138,7 @@ def _start_player(session, player_id):
         player = old_session.player
         old_session.player = None
         old_session.user = None
-        old_session.append({'logout': 'other_location'})
+        old_session.append({'other_location': player_id})
         _connect_session(session, player, '-- Existing Session Logged Out --')
         player.parse('look')
     else:
