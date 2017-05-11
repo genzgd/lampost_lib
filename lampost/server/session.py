@@ -49,15 +49,18 @@ def _app_connect(socket, session_id=None, player_id=None, **_):
 
 
 @link_route('player_login')
-def _player_login(session, user_name=None, password=None, **_):
+def _player_login(session, user_name=None, password=None, player_id=None, **_):
+    if session.user and player_id:
+        _start_player(session, player_id)
+        return
     if not user_name or not password:
         session.append({'login_failure': 'Browser did not submit credentials, please retype'})
         return
     user_name = user_name.lower()
     try:
         user = um.validate_user(user_name, password)
-    except ClientError as ce:
-        session.append({'login_failure': ce.client_message})
+    except ClientError:
+        session.append({'login_failure': "Invalid user name or password."})
         return
     session.connect_user(user)
     if len(user.player_ids) == 1:

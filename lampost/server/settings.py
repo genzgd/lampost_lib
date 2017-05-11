@@ -56,12 +56,12 @@ def update_account(session, player, user_id, user_update, **_):
     edit_update.publish_edit('update', user)
 
 
-def delete_account(session, password, **_):
+def delete_account(session, **args):
     user = session.user
     if user.player_ids:
-        um.validate_password(user, password)
+        um.validate_password(user, args.get('password', ''))
         ev.dispatch('player_logout', session)
-        um.delete_user(user)
+    um.delete_user(user)
 
 
 def create_player(user_id, player_name, player_data, **_):
