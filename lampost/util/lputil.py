@@ -48,9 +48,9 @@ def tuples_to_list(keys, tuples):
     return [{name: value[ix] for ix, name in enumerate(keys)} for value in tuples]
 
 
-class Blank():
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+class jsonToObj():
+    def __init__(self, json_dict):
+        self.__dict__.update(**json_dict)
 
 
 class ClientError(Exception):

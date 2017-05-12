@@ -1,8 +1,6 @@
-from tornado.web import RequestHandler
-
 from lampost.di.config import config_value
-from lampost.server.handlers import SessionHandler
 from lampost.di.resource import Injected, module_inject
+from lampost.server.link import link_module
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -12,7 +10,7 @@ db = Injected('datastore')
 perm = Injected('perm')
 edit_update = Injected('edit_update_service')
 module_inject(__name__)
-route_module(__name__, 'editor')
+link_module(__name__, 'editor')
 
 
 def edit_connect(session, user_id, app_session_id=None, **_):

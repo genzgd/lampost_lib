@@ -1,6 +1,8 @@
 import sys
+import inspect
 
 from collections import namedtuple
+from datetime import datetime
 
 from tornado.websocket import WebSocketHandler
 
@@ -30,17 +32,20 @@ def _add_routes():
                 _routes[route_path] = LinkRoute(prop, None)
 
 
-def link_route(path, perm_level=None):
+def link_route(path, imm_level=None):
     def wrapper(handler):
         if path in _routes:
             log.warn("Overwriting route for path {}", path)
-        _routes[path] = LinkRoute(handler, perm_level)
+        _routes[path] = LinkRoute(handler, imm_level)
 
     return wrapper
 
 
 def link_module(name, path=None):
     _route_modules.append((name, path))
+
+
+LinkRoute = namedtuple('LinkRoute', 'handler imm_level')
 
 
 class LinkHandler(WebSocketHandler):
@@ -59,10 +64,12 @@ class LinkHandler(WebSocketHandler):
         try:
             route = _routes.get(path)
             if not route:
-                raise ClientError(client_message="No route for {}".format(path), http_status=404)
+                raise NoRouteError(path)
             session = self.session
+            if session:
+                session.activity_time = datetime.now()
             player = session and session.player
-            perm.check_perm(player, route.perm_level)
+            perm.check_perm(player, route.imm_level)
             cmd['session'] = session
             cmd['player'] = player
             cmd['socket'] = self
@@ -94,4 +101,24 @@ class LinkHandler(WebSocketHandler):
         log.info("Unexpected stream receive")
 
 
-LinkRoute = namedtuple('LinkRoute', 'handler perm_level')
+class LinkRouter():
+    def __init__(self, path, imm_level=None):
+        self.path = path
+        for name, method in inspect.getmembers(self.__class__):
+            if not name.startswith('_') and hasattr(method, '__call__'):
+                route_path = '{}/{}'.format(path, name)
+                _routes[route_path] = LinkHandler(self._router, imm_level)
+
+    def _router(self, path, **kwargs):
+        self._pre_route()
+        getattr(self, path.split('/')[-1])(**kwargs)
+
+    def _pre_route(self):
+        pass
+
+
+class NoRouteError(ClientError):
+    http_status = 404
+
+    def __init__(self, path):
+        super().__init__("No route for {}".format(path))

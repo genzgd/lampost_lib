@@ -221,9 +221,6 @@ class ClientSession(Attachable):
     def attach_socket(self, socket):
         self.attach_time = datetime.now()
         self.ld_time = None
-        if self.socket:
-            self.append({'link_status': 'cancel'})
-            self.flush()
         self.socket = socket
         socket.session = self
 
@@ -249,9 +246,7 @@ class ClientSession(Attachable):
         return output
 
     def flush(self):
-        self.activity_time = datetime.now()
         if self.socket:
-            self._output.append({'link_status': "good"})
             output = self.pull_output()
             self.socket.write_message(json_encode(output))
 
@@ -275,12 +270,10 @@ class AppSession(ClientSession):
 
     def connect_user(self, user):
         self.user = user
-        self.activity_time = datetime.now()
 
     def connect_player(self, player):
         self.player = player
         player.session = self
-        self.activity_time = datetime.now()
 
     def player_info(self, now):
         if self.ld_time:

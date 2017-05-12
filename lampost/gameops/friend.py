@@ -73,7 +73,7 @@ def _check_friends(player):
     friends = set(db.fetch_set_keys(friend_key(player.dbo_id)))
     logged_in_friends = logged_in_players.intersection(friends)
     for friend_id in logged_in_friends:
-        sm.player_session_map(friend_id).append({'friend_login': {'name': player.name}})
+        sm.player_session(friend_id).append({'friend_login': {'name': player.name}})
     notify_user_ids = {db.get_index('ix:player:user', player_id) for player_id in
                        friends.difference(logged_in_friends)}
     notify_user_ids = notify_user_ids.intersection(db.fetch_set_keys(_FRIEND_EMAIL_KEY))
