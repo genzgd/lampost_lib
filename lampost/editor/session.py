@@ -13,48 +13,49 @@ module_inject(__name__)
 link_module(__name__, 'editor')
 
 
-def edit_connect(session, user_id, app_session_id=None, **_):
+def edit_connect(socket, session_id=None, user_id=None, app_session_id=None, **_):
+    session = sm.get_session(session_id) if session_id else None
     if not session:
         session_id, session = sm.start_session()
         session.player = None
-    if not session.player:
+    if not session.player and app_session_id:
         app_session = sm.get_session(app_session_id)
         if app_session:
             if getattr(app_session, 'user', None) and app_session.user.dbo_id == user_id:
                 session.player = app_session.player
             else:
                 log.warn("Edit session connected with non-matching user id")
-        session.append({'connect': session_id})
-        if session.player:
-            _editor_login(session)
-        else:
-            session.append({'connect_only': True})
-        return session.pull_output()
+    session.append({'connect': session_id})
+    if session.player:
+        _editor_login(session)
+    else:
+        session.append({'connect_only': True})
+    session.attach_socket(socket)
+    return session.pull_output()
 
 
 def edit_login(session, user_id, password, **_):
-    def main(self):
-        user_name = user_id.lower()
-        try:
-            user = um.validate_user(user_name, password)
-        except ClientError:
-            self.session.append({'login_failure': "Invalid user name or password."})
-            return
-        imm = None
-        for player in (db.load_object(player_id, "player") for player_id in user.player_ids):
-            if player.dbo_id == user_name:
-                if player.imm_level:
-                    imm = player
-                    break
-                session.append({'login_failure': '{} is not immortal.'.format(player.name)})
-                return
-            if player.imm_level and (not imm or player.imm_level > imm.imm_level):
+    user_name = user_id.lower()
+    try:
+        user = um.validate_user(user_name, password)
+    except ClientError:
+        session.append({'login_failure': "Invalid user name or password"})
+        return
+    imm = None
+    for player in (db.load_object(player_id, "player") for player_id in user.player_ids):
+        if player.dbo_id == user_name:
+            if player.imm_level:
                 imm = player
-        if imm:
-            session.player = imm
-            _editor_login(self.session)
-        else:
-            session.append({'login_failure': 'No immortals on this account.'})
+                break
+            session.append({'login_failure': '{} is not immortal.'.format(player.name)})
+            return
+        if player.imm_level and (not imm or player.imm_level > imm.imm_level):
+            imm = player
+    if imm:
+        session.player = imm
+        _editor_login(session)
+    else:
+        session.append({'login_failure': 'No immortals on this account.'})
 
 
 def edit_logout(session, **_):

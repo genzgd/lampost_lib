@@ -21,15 +21,14 @@ _routes = {}
 _route_modules = []
 
 
-@on_app_start
+@on_app_start(priority=2000)
 def _add_routes():
     for module_name, root_path in _route_modules:
         module = sys.modules[module_name]
         root_path = root_path or module_name.split('.')[-1]
         for name, prop in module.__dict__.items():
             if not name.startswith('_') and hasattr(prop, '__call__') and getattr(prop, '__module__') == module_name:
-                route_path = '{}/{}'.format(root_path, name)
-                _routes[route_path] = LinkRoute(prop, None)
+                link_route('{}/{}'.format(root_path, name))(prop)
 
 
 def link_route(path, imm_level=None):
@@ -37,6 +36,7 @@ def link_route(path, imm_level=None):
         if path in _routes:
             log.warn("Overwriting route for path {}", path)
         _routes[path] = LinkRoute(handler, imm_level)
+        log.info("Added route {}", path)
 
     return wrapper
 
@@ -74,21 +74,22 @@ class LinkHandler(WebSocketHandler):
             cmd['player'] = player
             cmd['socket'] = self
             data = route.handler(**cmd)
-            if data is not None or req_id is not None:
+            if req_id is None:
+                if data is not None:
+                    self.write_message(json_encode(data))
+            else:
                 response = {'req_id': req_id}
-                if data is None:
-                    response['http_status'] = 204
-                else:
-                    response['http_status'] = 200
+                if data is not None:
                     response['data'] = data
                 self.write_message(json_encode(response))
+
         except Exception as e:
             error_response = {'req_id': req_id}
             if isinstance(e, ClientError):
                 error_response['http_status'] = e.http_status
                 error_response['client_message'] = e.client_message
             else:
-                error_response['status'] = 500
+                error_response['http_status'] = 500
                 log.exception('Link Handler Exception', e)
             if req_id is not None:
                 self.write_message(json_encode(error_response))
@@ -107,11 +108,15 @@ class LinkRouter():
         for name, method in inspect.getmembers(self.__class__):
             if not name.startswith('_') and hasattr(method, '__call__'):
                 route_path = '{}/{}'.format(path, name)
-                _routes[route_path] = LinkHandler(self._router, imm_level)
+                _routes[route_path] = LinkRoute(self._router, imm_level)
 
     def _router(self, path, **kwargs):
         self._pre_route()
-        getattr(self, path.split('/')[-1])(**kwargs)
+        try:
+            method_name = path.split('/')[-1]
+            return getattr(self, method_name)(**kwargs)
+        except (IndexError, AttributeError):
+            raise NoRouteError(path)
 
     def _pre_route(self):
         pass
