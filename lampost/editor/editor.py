@@ -129,7 +129,7 @@ class ChildrenEditor(Editor):
         super().__init__(key_type, imm_level)
         self.parent_type = self.dbo_class.dbo_parent_type
 
-    def _pre_create(self, session, obj_def):
+    def _pre_create(self, obj_def, session):
         parent_id = obj_def['dbo_id'].split(':')[0]
         parent = db.load_object(parent_id, self.parent_type)
         perm.check_perm(session.player, parent)
