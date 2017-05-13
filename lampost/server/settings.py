@@ -137,6 +137,7 @@ def set_password(session, password, **_):
     user.password = make_hash(password)
     user.password_reset = False
     db.save_object(user)
+    edit_update.publish_edit('update', user)
 
 
 def notifies(session, notifies, **_):
