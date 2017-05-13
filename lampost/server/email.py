@@ -33,7 +33,9 @@ def _start():
 def _get_oauth_info():
     from oauth2client.service_account import ServiceAccountCredentials
     scopes = ['https://mail.google.com/']
-    credentials = ServiceAccountCredentials.from_json_keyfile_name('data/google_api.json', scopes=scopes)
+    credentials = ServiceAccountCredentials.from_json_keyfile_name('data/google_api.json',
+                                                                   scopes=scopes).create_delegated(
+        "lampostmessage@gmail.com")
     access_token_info = credentials.get_access_token()
     access_token = bytes(access_token_info.access_token, 'ascii')
     log.info(access_token)

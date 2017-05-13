@@ -40,7 +40,7 @@ class Dispatcher:
             try:
                 registration.callback(*args, **kwargs)
             except Exception:
-                log.exception("Dispatch Error")
+                log.exception("Dispatch Error", exc_info=True)
 
     def detach_events(self, owner):
         if owner in self._owner_map:

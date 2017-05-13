@@ -1,5 +1,3 @@
-import re
-
 from tornado.httpserver import HTTPServer
 from tornado.web import Application, URLSpec
 

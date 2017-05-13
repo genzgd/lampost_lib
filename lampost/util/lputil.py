@@ -48,17 +48,19 @@ def tuples_to_list(keys, tuples):
     return [{name: value[ix] for ix, name in enumerate(keys)} for value in tuples]
 
 
-class Blank():
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
+class jsonToObj():
+    def __init__(self, json_dict):
+        self.__dict__.update(**json_dict)
 
 
 class ClientError(Exception):
     http_status = 400
 
-    def __init__(self, client_message="client_error", display=None):
+    def __init__(self, client_message="client_error", display=None, http_status=None):
         self.client_message = client_message
         self.display = display
+        if http_status:
+            self.http_status = http_status
 
 
 class PermError(ClientError):

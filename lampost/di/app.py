@@ -27,3 +27,4 @@ def start_app():
 def exec_bootstraps():
     for func, _ in sorted(_bootstrap_funcs, key=lambda f: f[1]):
         func()
+    _bootstrap_funcs.clear()

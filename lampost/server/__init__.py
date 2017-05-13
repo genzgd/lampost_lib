@@ -1,1 +1,1 @@
-from . import target
+from . import target, settings
