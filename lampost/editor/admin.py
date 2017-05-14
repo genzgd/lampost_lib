@@ -21,11 +21,11 @@ def admin_op(func):
     return func
 
 
-@link_route('admin_op', 'supreme')
+@link_route('admin/operations', 'supreme')
 def _admin_exec(name, params=None, **_):
     if params is None:
         params = []
     if name == 'list':
         return [op['dto'] for op in admin_ops.values()]
-    op = admin_ops['name']
+    op = admin_ops[name]
     return op['func'](*params)
