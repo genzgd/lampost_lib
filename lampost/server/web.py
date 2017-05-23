@@ -28,13 +28,7 @@ def add_routes(routes):
 
 
 def start_service(port, interface):
-    application = Application(_handlers, log_function=_app_log, websocket_ping_interval=30)
+    application = Application(_handlers, websocket_ping_interval=30)
     log.info("Starting web server on port {}", port)
     http_server = HTTPServer(application)
     http_server.listen(port, interface)
-
-
-def _app_log(handler):
-    if log.debug_enabled():
-        log.debug('{} {} {}', handler.get_status(), handler._request_summary(),
-              1000.0 * handler.request.request_time())

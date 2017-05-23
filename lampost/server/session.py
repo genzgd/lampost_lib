@@ -137,7 +137,7 @@ def _reconnect_session(session_id, player_id):
 
 def _start_player(session, player_id):
     old_session = player_session(player_id)
-    if old_session:
+    if old_session and old_session != session:
         player = old_session.player
         old_session.player = None
         old_session.user = None

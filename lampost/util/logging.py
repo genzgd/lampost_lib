@@ -3,15 +3,18 @@ import logging
 
 from logging import LogRecord, Logger, basicConfig
 
+_old_formatting = set()
 
 class LogFmtRecord(LogRecord):
     def getMessage(self):
         msg = self.msg
         if self.args:
-            if isinstance(self.args, dict):
+            if self.name in _old_formatting:
+                msg = msg % self.args
+            elif isinstance(self.args, dict):
                 msg = msg.format(self.args)
             else:
-                msg = msg.format(*self.args)
+                msg = msg.format(*(self.args))
         return msg
 
 
@@ -54,6 +57,11 @@ def init_config(args):
     logging.basicConfig(level=log_level, style="{", **kwargs)
     root_logger = logging.getLogger('root')
 
+
+def get_logger(logger_name, old_formatting=True):
+    if old_formatting:
+        _old_formatting.add(logger_name)
+    return logging.getLogger(logger_name)
 
 def logged(func):
     def wrapper(*args, **kwargs):
