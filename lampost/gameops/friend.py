@@ -1,9 +1,8 @@
 from lampost.di.app import on_app_start
-from lampost.gameops.action import ActionError
-from lampost.server.domain import User
-from lampost.di.resource import Injected, module_inject
 from lampost.di.config import ConfigVal
-from lampost.util.lputil import ClientError
+from lampost.di.resource import Injected, module_inject
+from lampost.gameops.action import ActionError
+from lampost.user.core import User
 
 db = Injected('datastore')
 ev = Injected('dispatcher')

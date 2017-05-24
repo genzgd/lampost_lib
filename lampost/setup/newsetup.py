@@ -1,10 +1,10 @@
 from importlib import import_module
 
-from lampost.event.dispatcher import PulseDispatcher
-from lampost.util import json
-from lampost.di import resource, config, app
 from lampost.db import redisstore, permissions, dbconfig
-from lampost.server import user as user_manager
+from lampost.di import resource, config, app
+from lampost.event.dispatcher import PulseDispatcher
+from lampost.user import manage as user_manager
+from lampost.util import json
 
 log = resource.get_resource('log').factory('setup')
 

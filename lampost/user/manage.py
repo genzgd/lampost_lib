@@ -4,7 +4,7 @@ from base64 import b64decode
 from lampost.db.exceptions import DataError
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
-from lampost.server.domain import User
+from lampost.user.core import User
 from lampost.util.encrypt import make_hash, check_password
 from lampost.util.lputil import ClientError
 
@@ -113,6 +113,7 @@ def _user_connect(user, client_data):
 
 def _player_connect(player, client_data):
     client_data['name'] = player.name
+    client_data['playerId'] = player.dbo_id
     if player.imm_level:
         client_data['imm_level'] = player.imm_level
 
