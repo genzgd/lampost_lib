@@ -1,6 +1,7 @@
 import glob
-import inspect
 import logging
+from collections import defaultdict
+
 import yaml
 
 from weakref import WeakSet
@@ -9,6 +10,7 @@ from lampost.util.funcs import optional_arg_decorator
 
 log = logging.getLogger(__name__)
 
+_section_map = defaultdict(dict)
 _value_map = {}
 _section_value_map = {}
 _change_funcs = set()
@@ -36,6 +38,10 @@ def config_value(key, default=None):
     if default is None:
         log.error("No value found for config key {}", key)
     return default
+
+
+def config_section(section_key):
+    return _section_map.get(section_key, {})
 
 
 def _find_value(key):
@@ -77,11 +83,13 @@ def activate(all_values):
     global activated
     _section_value_map.clear()
     _value_map.clear()
-    for section_key, value in all_values.items():
-        _section_value_map[section_key] = value
-        value_key = section_key.split(':')[1]
+    _section_map.clear()
+    for full_key, value in all_values.items():
+        _section_value_map[full_key] = value
+        section_key, value_key = tuple(full_key.split(':'))
+        _section_map[section_key][value_key] = value
         if value_key in _value_map:
-            log.warn("Duplicate value for {} found in section {}", value_key, section_key.split(':')[0])
+            log.warn("Duplicate value for {} found in section {}", value_key, section_key)
         else:
             _value_map[value_key] = value
     update_values()

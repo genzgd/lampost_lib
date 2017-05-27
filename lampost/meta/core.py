@@ -4,6 +4,8 @@ from lampost.util import classes
 class CoreMeta(type):
 
     def __init__(cls, name, bases, new_attrs):
+        if not bases:
+            setattr(cls, 'call_mro', classes.call_mro)
         cls._meta_init_attrs(new_attrs)
         cls._extend(bases, "_cls_inits", "_cls_init")
         for cls_init in cls._cls_inits:
@@ -13,7 +15,6 @@ class CoreMeta(type):
             mixin_init = getattr(mixin_init, "__func__", mixin_init)
             if mixin_init not in cls._cls_inits:
                 cls._cls_inits.append(mixin_init)
-        setattr(cls, 'call_mro', classes.call_mro)
 
     @staticmethod
     def _meta_init_attrs(new_attrs):

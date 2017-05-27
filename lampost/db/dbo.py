@@ -1,6 +1,6 @@
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.core import CoreMeta
-from lampost.util.classes import call_mro, cls_name
+from lampost.util.classes import cls_name
 from lampost.db import dbofield
 from lampost.db.registry import set_dbo_class, get_dbo_class
 from lampost.db.dbofield import DBOField
@@ -47,7 +47,7 @@ class CoreDBO(DBOAspect):
     dbo_owner = None
 
     def on_loaded(self):
-        call_mro(self, '_on_loaded')
+        self.call_mro('_on_loaded')
 
     def hydrate(self, dto):
         missing_fields = []
@@ -70,9 +70,9 @@ class CoreDBO(DBOAspect):
         return self
 
     def reload(self):
-        call_mro(self, '_pre_reload')
+        self.call_mro('_pre_reload')
         self.hydrate(self.save_value)
-        call_mro(self, '_on_reload')
+        self.call_mro('_on_reload')
         return self
 
     def clone(self):
@@ -221,10 +221,10 @@ class KeyDBO(CoreDBO):
         return save_value
 
     def db_created(self):
-        call_mro(self, '_on_db_created')
+        self.call_mro('_on_db_created')
 
     def db_deleted(self):
-        call_mro(self, '_on_db_deleted')
+        self.call_mro('_on_db_deleted')
 
     def autosave(self):
         db.save_object(self, autosave=True)

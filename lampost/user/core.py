@@ -60,9 +60,9 @@ class Player(KeyDBO, SystemDBO, Attachable):
     def name(self):
         return self.dbo_id.capitalize()
 
-    def _on_loaded(self):
-        if not self.desc:
-            self.desc = "An unimaginably powerful immortal." if self.imm_level else "A raceless, classless, sexless player."
+    @property
+    def location(self):
+        return "Online" if self.session else "Offline"
 
     def _on_attach(self):
         ev.register_p(self.autosave, seconds=20)
