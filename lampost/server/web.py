@@ -1,5 +1,5 @@
 from tornado.httpserver import HTTPServer
-from tornado.web import Application, URLSpec
+from tornado.web import Application, URLSpec, StaticFileHandler
 
 from lampost.di.resource import Injected, module_inject
 
@@ -32,3 +32,13 @@ def start_service(port, interface):
     log.info("Starting web server on port {}", port)
     http_server = HTTPServer(application)
     http_server.listen(port, interface)
+
+
+class NoCacheStaticHandler(StaticFileHandler):
+    def set_extra_headers(self, path):
+        self.set_header('Cache-control', 'private, no-cache, no-store, must-revalidate')
+        self.set_header('Expires', '-1')
+        self.set_header('Pragma', 'no-cache')
+
+    def data_received(self, chunk):
+        pass

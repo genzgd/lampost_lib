@@ -38,12 +38,12 @@ def _on_config_change(self):
     _config()
 
 
-@link_route('app_connect')
-def _app_connect(socket, session_id=None, player_id=None, **_):
+@link_route('session_connect')
+def _session_connect(socket, session_id=None, player_id=None, **_):
     if session_id:
         session = _reconnect_session(session_id, player_id)
     else:
-        session = _start_app_session()
+        session = _start_session()
     session.attach_socket(socket)
     session.flush()
 
@@ -100,7 +100,7 @@ def _config():
     _link_dead_interval = timedelta(seconds=config_value('link_dead_interval'))
 
 
-def _start_app_session():
+def _start_session():
     session_id = _get_next_id()
     session = AppSession().attach()
     _session_map[session_id] = session
@@ -109,17 +109,10 @@ def _start_app_session():
     return session
 
 
-def start_session():
-    session_id = _get_next_id()
-    session = ClientSession().attach()
-    _session_map[session_id] = session
-    return session_id, session
-
-
 def _reconnect_session(session_id, player_id):
     session = get_session(session_id)
     if not session or not session.ld_time or not session.player or session.player.dbo_id != player_id:
-        new_session = _start_app_session()
+        new_session = _start_session()
         new_session.append({'invalid_session': session_id})
         return new_session
     stale_output = session.pull_output()
