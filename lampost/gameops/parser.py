@@ -289,7 +289,6 @@ class Parse:
             return INVALID_OBJECT
 
 
-
 def next_word(text):
     next_space = text.find(' ')
     if next_space == -1:

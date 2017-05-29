@@ -1,7 +1,6 @@
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
-from lampost.util.classes import call_mro
 
 log = Injected('log')
 ev = Injected('dispatcher')
@@ -14,7 +13,7 @@ class Attachable(metaclass=CoreMeta):
     def attach(self):
         if not self.attached:
             self.attached = True
-            call_mro(self, '_on_attach')
+            self.call_mro('_on_attach')
         return self
 
     def detach(self):

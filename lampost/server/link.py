@@ -6,7 +6,6 @@ from datetime import datetime
 
 from tornado.websocket import WebSocketHandler
 
-from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.util.lputil import ClientError
 
@@ -21,23 +20,26 @@ _routes = {}
 _route_modules = []
 
 
-@on_app_start(priority=2000)
-def _add_routes():
+def connect_routes():
     for module_name, root_path in _route_modules:
         module = sys.modules[module_name]
         root_path = root_path or module_name.split('.')[-1]
-        for name, prop in module.__dict__.items():
-            if not name.startswith('_') and hasattr(prop, '__call__') and getattr(prop, '__module__') == module_name:
-                link_route('{}/{}'.format(root_path, name))(prop)
+        for name, handler in module.__dict__.items():
+            if not name.startswith('_') and hasattr(handler, '__call__') and getattr(handler,
+                                                                                     '__module__') == module_name:
+                add_link_route('{}/{}'.format(root_path, name), handler)
+
+
+def add_link_route(path, handler, imm_level=None):
+    if path in _routes:
+        log.warn("Overwriting route for path {}", path)
+        _routes[path] = LinkRoute(handler, imm_level)
+        log.info("Added route {}", path)
 
 
 def link_route(path, imm_level=None):
     def wrapper(handler):
-        if path in _routes:
-            log.warn("Overwriting route for path {}", path)
-        _routes[path] = LinkRoute(handler, imm_level)
-        log.info("Added route {}", path)
-
+        add_link_route(path, handler, imm_level)
     return wrapper
 
 

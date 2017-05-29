@@ -96,7 +96,7 @@ class ActionError(ClientError):
         super().__init__(msg, display)
 
 
-class ActionCache:
+class ActionStore:
     def __init__(self):
         self._primary_map = defaultdict(list)
         self._abbrev_map = defaultdict(list)

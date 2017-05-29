@@ -1,11 +1,8 @@
-from lampost.util import classes
-
-
 class CoreMeta(type):
 
     def __init__(cls, name, bases, new_attrs):
         if not bases:
-            setattr(cls, 'call_mro', classes.call_mro)
+            setattr(cls, 'call_mro', call_mro)
         cls._meta_init_attrs(new_attrs)
         cls._extend(bases, "_cls_inits", "_cls_init")
         for cls_init in cls._cls_inits:
@@ -48,3 +45,11 @@ class CoreMeta(type):
         for base in bases:
             new_field.update(getattr(base, attr_name, set()))
         setattr(cls, attr_name, new_field)
+
+
+def call_mro(self, func_name, *args, **kwargs):
+    for cls in reversed(self.__class__.__mro__):
+        try:
+            cls.__dict__[func_name](self, *args, **kwargs)
+        except KeyError:
+            pass

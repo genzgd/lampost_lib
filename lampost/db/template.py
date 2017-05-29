@@ -6,7 +6,6 @@ from lampost.db.dbo import CoreDBO
 from lampost.meta.core import CoreMeta
 from lampost.db.registry import get_dbo_class, set_instance_class
 from lampost.db.dbofield import DBOField, DBOTField, DBOCField
-from lampost.util.classes import call_mro
 
 log = logging.getLogger(__name__)
 

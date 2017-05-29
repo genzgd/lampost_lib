@@ -1,6 +1,6 @@
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject, get_resource
-from lampost.server.link import link_route
+from lampost.server.link import add_link_route
 
 log = Injected('log')
 sm = Injected('session_manager')
@@ -9,7 +9,11 @@ perm = Injected('perm')
 module_inject(__name__)
 
 
-@link_route('register_service')
+def add_routes():
+    add_link_route('register_service', register_service)
+    add_link_route('unregister_service', unregister_service)
+
+
 def register_service(session, service_id, data=None, **_):
     client_service = get_resource(service_id)
     if client_service:
@@ -18,7 +22,6 @@ def register_service(session, service_id, data=None, **_):
         log.warn("Attempting registration for missing service {}", service_id)
 
 
-@link_route('unregister_service')
 def unregister_service(session, service_id, **_):
     get_resource(service_id).unregister(session)
 

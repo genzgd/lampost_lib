@@ -2,7 +2,7 @@ from lampost.di.app import on_app_start
 from lampost.di.config import ConfigVal
 from lampost.di.resource import Injected, module_inject
 from lampost.gameops.action import ActionError
-from lampost.user.core import User
+from lampost.user.model import User
 
 db = Injected('datastore')
 ev = Injected('dispatcher')
@@ -19,8 +19,7 @@ _ALL_EMAIL_KEY = "all_email_notifies"
 lampost_title = ConfigVal('lampost_title')
 
 
-@on_app_start
-def _start():
+def attach_service():
     ev.register('player_attach', _check_friends)
     ev.register('player_deleted', _delete_player)
 

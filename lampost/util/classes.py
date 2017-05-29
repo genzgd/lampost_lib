@@ -2,14 +2,6 @@ def cls_name(cls):
     return ".".join([cls.__module__, cls.__name__])
 
 
-def call_mro(obj, func_name, *args, **kwargs):
-    for cls in reversed(obj.__class__.__mro__):
-        try:
-            cls.__dict__[func_name](obj, *args, **kwargs)
-        except KeyError:
-            pass
-
-
 def call_each(coll, func_name, *args, **kwargs):
     for obj in coll:
         try:

@@ -2,7 +2,6 @@ from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.db.exceptions import DataError
 from lampost.editor.editor import Editor
-from lampost.server.link import link_route
 from lampost.util.encrypt import make_hash
 
 log = Injected('log')
@@ -19,7 +18,7 @@ def _start():
     ev.register('imm_update', _imm_update)
 
 
-class EditorImmortal():
+class EditorImmortal:
     def __init__(self, player):
         self.edit_dto = {'dbo_key_type': 'immortal', 'dbo_id': player.dbo_id, 'imm_level': player.imm_level}
 
@@ -39,12 +38,6 @@ def _imm_update(player, old_level, session=None):
     else:
         update_type = 'update'
     edit_update.publish_edit(update_type, immortal, session)
-
-
-@link_route('editor/immortal/list')
-def immortal_list(**_):
-    return ([{'dbo_id': key, 'name': key, 'imm_level': value, 'dbo_key_type': 'immortal'} for key, value in
-             perm.immortals.items()])
 
 
 class PlayerEditor(Editor):

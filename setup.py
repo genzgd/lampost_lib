@@ -6,7 +6,7 @@ long_description=pypandoc.convert('README.md', 'rst')
 
 setup(
     use_scm_version=True,
-    setup_requires=['setuptools_scm', 'tornado'],
+    setup_requires=['setuptools_scm', 'tornado', 'yaml'],
     name='lampost_lib',
     description='Multiuser environment web app framework ',
     long_description=long_description,

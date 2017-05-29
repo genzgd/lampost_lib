@@ -1,7 +1,7 @@
 from lampost.db.dbo import KeyDBO, SystemDBO
 from lampost.db.dbofield import AutoField, DBOField
 from lampost.di.resource import Injected, module_inject
-from lampost.event.zone import Attachable
+from lampost.event.attach import Attachable
 
 log = Injected('log')
 perm = Injected('perm')

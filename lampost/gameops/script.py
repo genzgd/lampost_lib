@@ -17,8 +17,7 @@ script_cache = {}
 builders = set()
 
 
-@on_app_start
-def _start():
+def attach_service():
     ev.register('maintenance', lambda: script_cache.clear())
     script_globals['log'] = log
 

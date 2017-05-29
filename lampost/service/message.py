@@ -1,6 +1,5 @@
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
-from lampost.gameops.action import ActionError
 from lampost.util.lputil import timestamp
 
 log = Injected('log')

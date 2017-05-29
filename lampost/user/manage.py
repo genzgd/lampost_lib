@@ -4,7 +4,7 @@ from base64 import b64decode
 from lampost.db.exceptions import DataError
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
-from lampost.user.core import User
+from lampost.user.model import User
 from lampost.util.encrypt import make_hash, check_password
 from lampost.util.lputil import ClientError
 

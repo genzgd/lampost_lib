@@ -6,7 +6,7 @@ from base64 import b64encode
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.di.config import on_config_change, config_value
-from lampost.event.zone import Attachable
+from lampost.event.attach import Attachable
 from lampost.server.link import link_route
 from lampost.util.lputil import ClientError
 
