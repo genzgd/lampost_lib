@@ -1,11 +1,11 @@
 import time
 
-from lampost.db.exceptions import DataError
-from lampost.di.resource import Injected, module_inject
-from lampost.di.config import load_yaml, activate
-from lampost.db.registry import get_dbo_class, _dbo_registry, get_mixed_type
-from lampost.editor.admin import admin_op
+from lampost.admin.ops import admin_op
 from lampost.db import dbconfig
+from lampost.db.exceptions import DataError
+from lampost.db.registry import get_dbo_class, _dbo_registry, get_mixed_type
+from lampost.di.config import load_yaml, activate
+from lampost.di.resource import Injected, module_inject
 
 log = Injected('log')
 db = Injected('datastore')
@@ -136,7 +136,7 @@ def restore_db_from_yaml(config_id='lampost', path='conf', force="no"):
     try:
         db_config = dbconfig.create(config_id, yaml_config, True)
     except Exception as exp:
-        log.exception("Failed to create configuration from yaml")
+        log.exception("Failed to create configuration from yaml", exc_info=True)
         db.save_object(existing)
         return "Exception creating configuration from yaml."
     activate(db_config.section_values)

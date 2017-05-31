@@ -9,11 +9,6 @@ perm = Injected('perm')
 module_inject(__name__)
 
 
-def add_routes():
-    add_link_route('register_service', register_service)
-    add_link_route('unregister_service', unregister_service)
-
-
 def register_service(session, service_id, data=None, **_):
     client_service = get_resource(service_id)
     if client_service:

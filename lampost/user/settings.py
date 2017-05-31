@@ -4,7 +4,6 @@ import string
 from lampost.di.resource import Injected, module_inject
 from lampost.db.exceptions import DataError
 from lampost.di.config import ConfigVal
-from lampost.server.link import link_module
 from lampost.util.encrypt import make_hash
 from lampost.util.lputil import ClientError
 
@@ -17,7 +16,6 @@ email = Injected('email_sender')
 edit_update = Injected('edit_update_service')
 friend_service = Injected('friend_service')
 module_inject(__name__)
-link_module(__name__)
 
 lampost_title = ConfigVal('lampost_title')
 

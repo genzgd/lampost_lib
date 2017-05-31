@@ -5,39 +5,11 @@ from lampost.editor.editor import Editor
 from lampost.util.encrypt import make_hash
 
 log = Injected('log')
-ev = Injected('dispatcher')
 db = Injected('datastore')
 perm = Injected('perm')
 um = Injected('user_manager')
 edit_update = Injected('edit_update_service')
 module_inject(__name__)
-
-
-@on_app_start
-def _start():
-    ev.register('imm_update', _imm_update)
-
-
-class EditorImmortal:
-    def __init__(self, player):
-        self.edit_dto = {'dbo_key_type': 'immortal', 'dbo_id': player.dbo_id, 'imm_level': player.imm_level}
-
-    def can_write(self, *_):
-        return False
-
-    def can_read(self, *_):
-        return False
-
-
-def _imm_update(player, old_level, session=None):
-    immortal = EditorImmortal(player)
-    if not old_level and player.imm_level:
-        update_type = 'create'
-    elif old_level and not player.imm_level:
-        update_type = 'delete'
-    else:
-        update_type = 'update'
-    edit_update.publish_edit(update_type, immortal, session)
 
 
 class PlayerEditor(Editor):

@@ -1,6 +1,2 @@
-def add_routes():
-    from . import settings
-
-
-def add_targets():
+def add_player_targets():
     from . import target

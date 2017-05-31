@@ -1,10 +1,9 @@
-from lampost.di.resource import Injected
-from lampost.server.link import link_route
+from lampost.di.resource import Injected, module_inject
 
 perm = Injected('perm')
+module_inject(__name__)
 
 
-@link_route('editor/immortal/list')
 def immortal_list(**_):
     return ([{'dbo_id': key, 'name': key, 'imm_level': value, 'dbo_key_type': 'immortal'} for key, value in
              perm.immortals.items()])

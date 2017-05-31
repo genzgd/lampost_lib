@@ -5,7 +5,7 @@ from base64 import b64encode
 
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
-from lampost.di.config import on_config_change, config_value
+from lampost.di.config import on_config_change, config_value, config_section
 from lampost.event.attach import Attachable
 from lampost.server.link import link_route
 from lampost.util.lputil import ClientError
@@ -101,11 +101,9 @@ def _config():
 
 
 def _start_session():
-    session_id = _get_next_id()
-    session = AppSession().attach()
-    _session_map[session_id] = session
-    session.append({'connect': session_id})
-    ev.dispatch('session_connect', session)
+    session = AppSession(_get_next_id()).attach()
+    _session_map[session.id] = session
+    _connect_session(session)
     return session
 
 
@@ -116,16 +114,21 @@ def _reconnect_session(session_id, player_id):
         new_session.append({'invalid_session': session_id})
         return new_session
     stale_output = session.pull_output()
+    _connect_session(session)
     client_data = {}
-    session.append({'connect': session_id})
-    ev.dispatch('session_connect', session)
-    session.append({'login': client_data})
     ev.dispatch('user_connect', session.user, client_data)
     ev.dispatch('player_connect', session.player, client_data)
+    session.append({'login': client_data})
     session.append_list(stale_output)
     session.player.display_line("-- Reconnecting Session --", 'system')
     session.player.parse("look")
     return session
+
+
+def _connect_session(session):
+    session.append({'connect': session.id})
+    session.append({'client_config': config_section('client')})
+    ev.dispatch('session_connect', session)
 
 
 def _start_player(session, player_id):
@@ -135,14 +138,13 @@ def _start_player(session, player_id):
         old_session.player = None
         old_session.user = None
         old_session.append({'other_location': player_id})
-        _connect_session(session, player, '-- Existing Session Logged Out --')
-        player.parse('look')
+        _connect_player(session, player, '-- Existing Session Logged Out --')
     else:
         player = um.find_player(player_id)
         if not player:
             session.append('logout')
             return
-        _connect_session(session, player, 'Welcome {}'.format(player.name))
+        _connect_player(session, player, 'Welcome {}'.format(player.name))
         um.login_player(player)
     client_data = {}
     ev.dispatch('user_connect', session.user, client_data)
@@ -152,7 +154,7 @@ def _start_player(session, player_id):
     _broadcast_status()
 
 
-def _connect_session(session, player, text):
+def _connect_player(session, player, text):
     if player.user_id != session.user.dbo_id:
         raise ClientError("Player user does not match session user")
     _player_session_map[player.dbo_id] = session
@@ -201,6 +203,9 @@ def _broadcast_status():
 
 
 class ClientSession(Attachable):
+    def __init__(self, id):
+        self.id = id
+
     def _on_attach(self):
         self._pulse_reg = None
         self.attach_time = datetime.now()

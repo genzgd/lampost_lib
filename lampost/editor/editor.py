@@ -2,7 +2,6 @@ from lampost.di.resource import Injected, module_inject
 from lampost.db.registry import get_dbo_class
 from lampost.db.exceptions import DataError
 
-from lampost.server.link import LinkRouter, NoRouteError, link_route
 from lampost.util.lputil import PermError
 
 log = Injected('log')
@@ -31,15 +30,13 @@ def _edit_dto(dbo, player):
     return dto
 
 
-class Editor(LinkRouter):
+class Editor:
     parent_type = None
     children_types = None
 
     def __init__(self, key_type, imm_level='builder', create_level=None):
-        super().__init__('editor/{}'.format(key_type), imm_level)
         self.key_type = key_type
         self.dbo_class = get_dbo_class(key_type)
-        self.imm_level = imm_level
         self.create_level = create_level if create_level else imm_level
         if hasattr(self.dbo_class, 'dbo_children_types'):
             self.children_types = self.dbo_class.dbo_children_types

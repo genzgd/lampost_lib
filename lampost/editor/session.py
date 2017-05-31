@@ -1,6 +1,5 @@
 from lampost.di.config import config_value
 from lampost.di.resource import Injected, module_inject
-from lampost.server.link import link_module
 from lampost.util.lputil import ClientError
 
 log = Injected('log')
@@ -10,7 +9,6 @@ db = Injected('datastore')
 perm = Injected('perm')
 edit_update = Injected('edit_update_service')
 module_inject(__name__)
-link_module(__name__, 'editor')
 
 
 def edit_connect(socket, session_id=None, user_id=None, app_session_id=None, **_):

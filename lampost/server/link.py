@@ -17,37 +17,38 @@ json_encode = Injected('json_encode')
 module_inject(__name__)
 
 _routes = {}
-_route_modules = []
 
-
-def connect_routes():
-    for module_name, root_path in _route_modules:
-        module = sys.modules[module_name]
-        root_path = root_path or module_name.split('.')[-1]
-        for name, handler in module.__dict__.items():
-            if not name.startswith('_') and hasattr(handler, '__call__') and getattr(handler,
-                                                                                     '__module__') == module_name:
-                add_link_route('{}/{}'.format(root_path, name), handler)
+LinkRoute = namedtuple('LinkRoute', 'handler imm_level')
 
 
 def add_link_route(path, handler, imm_level=None):
     if path in _routes:
         log.warn("Overwriting route for path {}", path)
-        _routes[path] = LinkRoute(handler, imm_level)
-        log.info("Added route {}", path)
+    _routes[path] = LinkRoute(handler, imm_level)
+    log.info("Added route {}", path)
+
+
+def add_link_object(path, route_obj, imm_level=None):
+    if imm_level is None:
+        imm_level = getattr(route_obj, 'imm_level', None)
+    for name, method in inspect.getmembers(route_obj.__class__):
+        if not name.startswith('_') and hasattr(method, '__call__'):
+            route_path = '{}/{}'.format(path, name)
+            add_link_route(route_path, getattr(route_obj, name), imm_level)
+
+
+def add_link_module(module, root_path=None, imm_level=None):
+    root_path = root_path or module.__name__.split('.')[-1]
+    for name, handler in module.__dict__.items():
+        if not name.startswith('_') and hasattr(handler, '__call__') \
+                and getattr(handler, '__module__') == module.__name__:
+            add_link_route('{}/{}'.format(root_path, name), handler, imm_level)
 
 
 def link_route(path, imm_level=None):
     def wrapper(handler):
         add_link_route(path, handler, imm_level)
     return wrapper
-
-
-def link_module(name, path=None):
-    _route_modules.append((name, path))
-
-
-LinkRoute = namedtuple('LinkRoute', 'handler imm_level')
 
 
 class LinkHandler(WebSocketHandler):
@@ -102,26 +103,6 @@ class LinkHandler(WebSocketHandler):
 
     def data_received(self, chunk):
         log.info("Unexpected stream receive")
-
-
-class LinkRouter():
-    def __init__(self, path, imm_level=None):
-        self.path = path
-        for name, method in inspect.getmembers(self.__class__):
-            if not name.startswith('_') and hasattr(method, '__call__'):
-                route_path = '{}/{}'.format(path, name)
-                _routes[route_path] = LinkRoute(self._router, imm_level)
-
-    def _router(self, path, **kwargs):
-        self._pre_route()
-        try:
-            method_name = path.split('/')[-1]
-            return getattr(self, method_name)(**kwargs)
-        except (IndexError, AttributeError):
-            raise NoRouteError(path)
-
-    def _pre_route(self):
-        pass
 
 
 class NoRouteError(ClientError):
