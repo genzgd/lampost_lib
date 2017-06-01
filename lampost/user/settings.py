@@ -72,8 +72,9 @@ def create_player(user_id, player_name, player_data, **_):
             or player_name in perm.system_accounts:
         raise DataError(player_name.capitalize() + " is in use.")
     player_data['dbo_id'] = player_name
-    player = db.create_object("player", player_data)
-    um.attach_player(user, player)
+    player = um.create_player(user, player_data)
+    ev.dispatch('player_create', player, user)
+    db.save_object(player)
 
 
 def get_players(user_id, **_):

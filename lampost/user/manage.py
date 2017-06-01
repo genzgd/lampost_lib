@@ -67,11 +67,10 @@ def delete_player(user, player_id):
         db.save_object(user)
 
 
-def attach_player(user, player):
+def create_player(user, player_data):
+    player_data['user_id'] = user.dbo_id
+    player = db.create_object("player", player_data)
     user.player_ids.append(player.dbo_id)
-    db.set_index('ix:player:user', player.dbo_id, user.dbo_id)
-    ev.dispatch('player_create', player, user)
-    player.user_id = user.dbo_id
     db.save_object(player)
     db.save_object(user)
     return player
@@ -83,8 +82,7 @@ def find_player(player_id):
 
 def create_user(user_name, password, email=""):
     user_raw = {'dbo_id': db.db_counter('user_id'), 'user_name': user_name,
-                'email': email, 'password': make_hash(password),
-                'notifies': ['friendSound', 'friendDesktop']}
+                'email': email, 'password': make_hash(password)}
     user = db.create_object(User, user_raw)
     edit_update.publish_edit('create', user)
     return user
@@ -145,7 +143,6 @@ def name_to_id(player_name):
 
 
 def player_cleanup(player_id):
-    db.delete_index('ix:player:user', player_id)
     for dbo_id in db.fetch_set_keys('owned:{}'.format(player_id)):
         dbo = db.load_object(dbo_id)
         if dbo and dbo.owner_id == player_id:

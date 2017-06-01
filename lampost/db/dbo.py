@@ -186,6 +186,7 @@ class KeyDBO(CoreDBO):
     dbo_key_type = None
     dbo_key_sort = None
     dbo_indexes = ()
+    dbo_back_refs = ()
     dbo_children_types = ()
 
     dbo_ts = DBOField(0)

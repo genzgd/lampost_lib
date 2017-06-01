@@ -8,6 +8,7 @@ module_inject(__name__)
 
 system_accounts = []
 imm_levels = {}
+immortals = {}
 
 
 @on_app_start(priority=500)

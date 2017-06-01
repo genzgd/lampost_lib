@@ -10,9 +10,9 @@ module_inject(__name__)
 
 
 class User(KeyDBO, SystemDBO):
-    dbo_key_type = "user"
-    dbo_set_key = "users"
-    dbo_indexes = "user_name", "email"
+    dbo_key_type = 'user'
+    dbo_set_key = 'users'
+    dbo_indexes = 'user_name', 'email'
 
     user_name = DBOField('')
     password = DBOField()
@@ -38,8 +38,9 @@ class User(KeyDBO, SystemDBO):
 
 
 class Player(KeyDBO, SystemDBO, Attachable):
-    dbo_key_type = "player"
-    dbo_set_key = "players"
+    dbo_key_type = 'player'
+    dbo_set_key = 'players'
+    dbo_back_refs = 'user',
 
     session = AutoField()
 
@@ -77,11 +78,11 @@ class Player(KeyDBO, SystemDBO, Attachable):
 
     def display_line(self, text, display='default'):
         if text and self.session:
-            self.session.display_line({'text': text, 'display': display})
+            self.session.append('display', {'text': text, 'display': display})
 
-    def output(self, output):
+    def output(self, key, data):
         if self.session:
-            self.session.append(output)
+            self.session.update(key, data)
 
     def receive_broadcast(self, broadcast):
         self.display_line(broadcast.translate(self), broadcast.display)

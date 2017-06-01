@@ -68,16 +68,16 @@ class ChannelService(ClientService):
         timestamp(message)
         for session in self.sessions:
             if channel_id in session.channel_ids:
-                session.append({'channel': message})
+                session.append('channel', message)
         db.add_db_list(channel_key(channel_id), {'text': text, 'timestamp': message['timestamp']})
 
     def add_sub(self, session, channel_id):
         session.channel_ids.add(channel_id)
-        session.append({'channel_subscribe': {'id': channel_id, 'messages': db.get_db_list(channel_key(channel_id))}})
+        session.append('channel_subscribe', {'id': channel_id, 'messages': db.get_db_list(channel_key(channel_id))})
 
     def remove_sub(self, session, channel_id):
         session.channel_ids.remove(channel_id)
-        session.append({'channel_unsubscribe': channel_id})
+        session.append('channel_unsubscribe', channel_id)
 
     def _session_connect(self, session, *_):
         self.register(session, None)

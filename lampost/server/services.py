@@ -38,9 +38,13 @@ class ClientService():
         except KeyError:
             pass
 
-    def _session_dispatch(self, event):
+    def _session_update(self, key, data):
         for session in self.sessions:
-            session.append(event)
+            session.update(key, data)
+
+    def _session_append(self, key, data):
+        for session in self.sessions:
+            session.update(key, data)
 
 
 class PlayerListService(ClientService):
@@ -51,10 +55,10 @@ class PlayerListService(ClientService):
 
     def register(self, session, data=None):
         super().register(session, data)
-        session.append({'player_list': sm.player_info_map()})
+        session.update('player_list', sm.player_info_map())
 
     def _process_list(self, player_list):
-        self._session_dispatch({'player_list': player_list})
+        self._session_update('player_list', player_list)
 
 
 class AnyLoginService(ClientService):
@@ -64,7 +68,7 @@ class AnyLoginService(ClientService):
         ev.register('player_attach', self._process_login)
 
     def _process_login(self, player):
-        self._session_dispatch({'any_login': {'name': player.name}})
+        self._session_append('any_login', {'name': player.name})
 
 
 class EditUpdateService(ClientService):
@@ -80,20 +84,20 @@ class EditUpdateService(ClientService):
             local_dto['can_write'] = perm.has_perm(source_session.player, edit_obj)
         else:
             local_dto = None
-        edit_update  = {'edit_update': {'edit_type': edit_type}}
+        edit_update = {'edit_type': edit_type}
 
         for session in self.sessions:
             if session == source_session:
                 if local:
                     event = edit_update.copy()
                     local_dto['local'] = True
-                    event['edit_update']['model'] = local_dto
-                    session.append(event)
+                    event['model'] = local_dto
+                    session.append('edit_update', event)
             else:
                 event = edit_update.copy()
                 event_dto = edit_dto.copy()
                 event_dto['can_write'] = perm.has_perm(session.player, edit_obj)
-                event['edit_update']['model'] = event_dto
-                session.append(event)
+                event['model'] = event_dto
+                session.append('edit_update', event)
 
         return local_dto

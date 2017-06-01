@@ -45,6 +45,9 @@ class RedisStore:
         if dbo.dbo_set_key:
             self.redis.sadd(dbo.dbo_set_key, dbo.dbo_id)
         self.save_object(dbo, update_timestamp)
+        for ref in dbo.dbo_back_refs:
+            self.set_index('ix:{}:{}'.format(dbo_class.dbo_key_type, ref), dbo.dbo_id,
+                           getattr(dbo, '{}_id'.format(ref)))
         return dbo
 
     def load_object(self, dbo_key, key_type=None, silent=False):
@@ -103,6 +106,8 @@ class RedisStore:
             ix_value = getattr(dbo, ix_name, None)
             if ix_value is not None and ix_value != '':
                 self.delete_index('ix:{}:{}'.format(dbo.dbo_key_type, ix_name), ix_value)
+        for ref in dbo.dbo_back_refs:
+            self.delete_index('ix:{}:{}'.format(dbo.dbo_key_type, ref), dbo.dbo_id)
         log.debug("object deleted: {}", key)
         self.evict_object(dbo)
 

@@ -54,13 +54,13 @@ def _player_login(session, user_name=None, password=None, player_id=None, **_):
         _start_player(session, player_id)
         return
     if not user_name or not password:
-        session.append({'login_failure': 'Browser did not submit credentials, please retype'})
+        session.send('login_failure', 'Browser did not submit credentials, please retype')
         return
     user_name = user_name.lower()
     try:
         user = um.validate_user(user_name, password)
     except ClientError:
-        session.append({'login_failure': "Invalid user name or password."})
+        session.send('login_failure', 'Invalid user name or password')
         return
     session.connect_user(user)
     if len(user.player_ids) == 1:
@@ -70,7 +70,7 @@ def _player_login(session, user_name=None, password=None, player_id=None, **_):
     else:
         client_data = {}
         ev.dispatch('user_connect', user, client_data)
-        session.append({'user_login': client_data})
+        session.send('user_login', client_data)
 
 
 def get_session(session_id):
@@ -102,8 +102,8 @@ def _config():
 
 def _start_session():
     session = AppSession(_get_next_id()).attach()
-    _session_map[session.id] = session
-    _connect_session(session)
+    _session_map[session.session_id] = session
+    _connect_session(session, 'new')
     return session
 
 
@@ -111,23 +111,19 @@ def _reconnect_session(session_id, player_id):
     session = get_session(session_id)
     if not session or not session.ld_time or not session.player or session.player.dbo_id != player_id:
         new_session = _start_session()
-        new_session.append({'invalid_session': session_id})
         return new_session
-    stale_output = session.pull_output()
-    _connect_session(session)
+    _connect_session(session, 'reconnect')
     client_data = {}
     ev.dispatch('user_connect', session.user, client_data)
     ev.dispatch('player_connect', session.player, client_data)
-    session.append({'login': client_data})
-    session.append_list(stale_output)
-    session.player.display_line("-- Reconnecting Session --", 'system')
-    session.player.parse("look")
+    session.update('login', client_data)
+    session.player.display_line('-- Reconnecting Session --', 'system')
     return session
 
 
-def _connect_session(session):
-    session.append({'connect': session.id})
-    session.append({'client_config': config_section('client')})
+def _connect_session(session, connect_type):
+    session.update('connect', {'session_id': session.session_id, 'connect_type': connect_type})
+    session.update('client_config', config_section('client'))
     ev.dispatch('session_connect', session)
 
 
@@ -137,19 +133,19 @@ def _start_player(session, player_id):
         player = old_session.player
         old_session.player = None
         old_session.user = None
-        old_session.append({'other_location': player_id})
+        old_session.send('logout', 'other_location')
         _connect_player(session, player, '-- Existing Session Logged Out --')
     else:
         player = um.find_player(player_id)
         if not player:
-            session.append('logout')
+            session.send('logout')
             return
         _connect_player(session, player, 'Welcome {}'.format(player.name))
         um.login_player(player)
     client_data = {}
     ev.dispatch('user_connect', session.user, client_data)
     ev.dispatch('player_connect', player, client_data)
-    session.append({'login': client_data})
+    session.send('login', client_data)
     _player_info_map[player.dbo_id] = session.player_info(session.activity_time)
     _broadcast_status()
 
@@ -159,7 +155,7 @@ def _connect_player(session, player, text):
         raise ClientError("Player user does not match session user")
     _player_session_map[player.dbo_id] = session
     session.connect_player(player)
-    session.display_line({'text': text, 'display': 'system'})
+    player.display_line({'text': text, 'display': 'system'})
 
 
 def _player_logout(session):
@@ -172,7 +168,7 @@ def _player_logout(session):
     session.player = None
     del _player_info_map[player.dbo_id]
     del _player_session_map[player.dbo_id]
-    session.append({'logout': 'logout'})
+    session.send('logout', 'logout')
     _broadcast_status()
 
 
@@ -203,8 +199,8 @@ def _broadcast_status():
 
 
 class ClientSession(Attachable):
-    def __init__(self, id):
-        self.id = id
+    def __init__(self, session_id):
+        self.session_id = session_id
 
     def _on_attach(self):
         self._pulse_reg = None
@@ -222,13 +218,23 @@ class ClientSession(Attachable):
         self.socket = socket
         socket.session = self
 
-    def append(self, data):
-        self._output.append(data)
+    def append(self, key, data):
+        output = self._output.get(key, [])
+        output.append(data)
+        if key not in self._output:
+            self._output[key] = output
         self._schedule()
 
-    def append_list(self, data):
-        self._output += data
+    def update(self, key, data):
+        output = self._output.get(key, {})
+        output.update(data)
+        if key not in self._output:
+            self._output[key] = output
         self._schedule()
+
+    def send(self, key, data=None):
+        self._output[key] = data
+        self.flush()
 
     def link_failed(self, reason):
         log.debug("Link failed {}", reason)
@@ -253,9 +259,7 @@ class ClientSession(Attachable):
             self._pulse_reg = ev.register("pulse", self.flush)
 
     def _reset(self):
-        self._lines = []
-        self._output = []
-        self._status = None
+        self._output = {}
 
 
 class AppSession(ClientSession):
@@ -283,15 +287,3 @@ class AppSession(ClientSession):
             else:
                 status = "Idle: " + str(idle // 60) + "m"
         return {'status': status, 'name': self.player.name, 'loc': self.player.location}
-
-    def display_line(self, display_line):
-        if not self._lines:
-            self.append({'display': {'lines': self._lines}})
-        self._lines.append(display_line)
-
-    def update_status(self, status):
-        try:
-            self._status.update(status)
-        except AttributeError:
-            self._status = status
-            self.append({'status': status})
