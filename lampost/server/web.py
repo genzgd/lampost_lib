@@ -1,5 +1,7 @@
+import os
+
 from tornado.httpserver import HTTPServer
-from tornado.web import Application, URLSpec, StaticFileHandler
+from tornado.web import Application, URLSpec, RequestHandler, HTTPError
 
 from lampost.di.resource import Injected, module_inject
 
@@ -34,11 +36,30 @@ def start_service(port, interface):
     http_server.listen(port, interface)
 
 
-class NoCacheStaticHandler(StaticFileHandler):
+class IndexHandler(RequestHandler):
+    def initialize(self, index_file):
+        self.index_file = index_file
+
     def set_extra_headers(self, path):
         self.set_header('Cache-control', 'private, no-cache, no-store, must-revalidate')
         self.set_header('Expires', '-1')
         self.set_header('Pragma', 'no-cache')
 
+    def get(self):
+        if not os.path.exists(self.index_file):
+            raise HTTPError(404)
+        with open(self.index_file, "rb") as file:
+            remaining = None
+            while True:
+                chunk_size = 64 * 1024
+                if remaining is not None and remaining < chunk_size:
+                    chunk_size = remaining
+                chunk = file.read(chunk_size)
+                if chunk:
+                    self.write(chunk)
+                else:
+                    return
+
     def data_received(self, chunk):
         pass
+

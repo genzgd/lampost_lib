@@ -19,7 +19,7 @@ from lampost.util import json
 from lampost.server import web
 from lampost.server.link import LinkHandler
 from lampost.server.services import AnyLoginService, PlayerListService, EditUpdateService
-from lampost.server.web import NoCacheStaticHandler
+from lampost.server.web import IndexHandler
 
 from lampost.util.logging import get_logger
 from tornado.ioloop import IOLoop
@@ -61,11 +61,11 @@ def start_server(args):
     tornado_logger = get_logger('tornado.access')
     tornado_logger.setLevel(args.log_level.upper())
     web.service_root = args.service_root
+    web.add_raw_route('/link', LinkHandler)
     if args.web_files:
-        web.add_raw_route("/", RedirectHandler, url="/webclient/lampost.html")
-        web.add_raw_route("/webclient/(lampost\.html)", NoCacheStaticHandler, path=os.path.abspath(args.web_files))
-        web.add_raw_route("/webclient/(.*)", StaticFileHandler, path=os.path.abspath(args.web_files))
-    web.add_raw_route("/link", LinkHandler)
+        web.add_raw_route('^[^.]+$', IndexHandler,
+                          index_file=os.path.abspath(args.web_files) + os.path.sep + 'index.html')
+        web.add_raw_route('/(.*)', StaticFileHandler, path=os.path.abspath(args.web_files))
     web.start_service(args.port, args.server_interface)
 
     IOLoop.instance().start()
