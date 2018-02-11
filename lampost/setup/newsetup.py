@@ -34,16 +34,15 @@ def new_setup(args):
 
     # Initialize core services needed by the reset of the setup process
     resource.register('dispatcher', PulseDispatcher())
-    perm = resource.register('perm', permissions)
+    resource.register('perm', permissions)
     um = resource.register('user_manager', user_manager)
     resource.register('edit_update_service', SetupEditUpdate)
     app_setup = import_module('{}.newsetup'.format(args.app_id))
-    app.exec_bootstraps()
 
     first_player = app_setup.first_time_setup(args, db)
     user = um.create_user(args.imm_account, args.imm_password)
     player = um.attach_player(user, first_player)
-    perm.update_immortal_list(player)
+    db.set_db_hash('immortals', player.dbo_id, player.imm_level)
 
 
 class SetupEditUpdate:
