@@ -99,8 +99,8 @@ class Editor(LinkRouter):
                 'children_types': self.children_types,
                 'new_object': self.dbo_class.new_dto()}
 
-    def test_delete(self, obj_def, **_):
-        return list(self._all_holders(obj_def['dbo_id']))
+    def test_delete(self, dbo_id, **_):
+        return list(self._all_holders(dbo_id))
 
     def _pre_delete(self, del_obj, session):
         pass

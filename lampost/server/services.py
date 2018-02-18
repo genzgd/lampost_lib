@@ -82,13 +82,13 @@ class EditUpdateService(ClientService):
             local_dto['can_write'] = perm.has_perm(source_session.player, edit_obj)
         else:
             local_dto = None
-        edit_update  = {'edit_update': {'edit_type': edit_type}}
+        edit_update = {'edit_update': {'edit_type': edit_type}}
 
         for session in self.sessions:
             if session == source_session:
                 if local:
                     event = edit_update.copy()
-                    local_dto['local'] = True
+                    event['edit_update']['local'] = True
                     event['edit_update']['model'] = local_dto
                     session.append(event)
             else:
