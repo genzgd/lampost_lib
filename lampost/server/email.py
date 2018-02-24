@@ -24,6 +24,8 @@ def _start():
         for key, value in json_decode(info_file.read()).items():
             params[key] = value
         available = True
+    except FileNotFoundError:
+        log.warn("No email configuration file found")
     except Exception:
         log.warn("No email info available", exc_info=True)
     if info_file:

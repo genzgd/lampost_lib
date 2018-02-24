@@ -12,15 +12,11 @@ edit_update = Injected('edit_update_service')
 module_inject(__name__)
 
 
-def _reload_holders(holders, session):
+def _update_holders(holders, session):
     for holder_key in holders:
-        holder = db.load_cached(holder_key)
+        holder = db.load_object(holder_key)
         if holder:
-            holder.reload()
-        else:
-            holder = db.load_object(holder_key)
-        if holder:
-            db.save_object(holder)
+            holder.update()
             edit_update.publish_edit('update', holder, session, True)
 
 
@@ -77,7 +73,7 @@ class Editor(LinkRouter):
         del_holders = self._all_holders(dbo_id)
         db.delete_object(del_obj)
         self._post_delete(del_obj, session)
-        _reload_holders(del_holders, session)
+        _update_holders(del_holders, session)
         edit_update.publish_edit('delete', del_obj, session)
 
     def update(self, session, player, obj_def, **_):
@@ -89,9 +85,8 @@ class Editor(LinkRouter):
         if hasattr(existing_obj, 'change_owner') and obj_def['owner_id'] != existing_obj.owner_id:
             existing_obj.change_owner(obj_def['owner_id'])
         update_holders = db.dbo_holders(existing_obj.dbo_key, 1)
-        db.update_object(existing_obj, obj_def)
-        self._post_update(existing_obj, session)
-        _reload_holders(update_holders, session)
+        existing_obj.update(obj_def)
+        _update_holders(update_holders, session)
         return edit_update.publish_edit('update', existing_obj, session)
 
     def metadata(self, player, **_):

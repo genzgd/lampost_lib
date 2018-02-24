@@ -3,6 +3,7 @@ import logging
 from weakref import WeakSet
 
 from lampost.db.dbo import CoreDBO
+from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
 from lampost.db.registry import get_dbo_class, set_instance_class
 from lampost.db.dbofield import DBOField, DBOTField, DBOCField
@@ -13,33 +14,41 @@ log = logging.getLogger(__name__)
 
 class Template(metaclass=CoreMeta):
     instance_cls = None
+    _instances = AutoField(WeakSet())
+
+    def _pre_update(self):
+        for instance in self._instances:
+            call_mro('_pre_update', instance)
 
     def _on_loaded(self):
-        self._instances = WeakSet()
-
-    def _on_reload(self):
         for instance in self._instances:
             instance.reload()
 
-    def create_instance(self, owner=None):
-        instance = self.get_instance()
+    def _on_db_deleted(self):
+        for instance in self._instances:
+            call_mro(instance, '_on_db_deleted')
+
+    def create_instance(self, dbo_owner):
+        instance = self.get_instance(dbo_owner)
         instance.on_loaded()
-        self.config_instance(instance, owner)
+        self.config_instance(instance)
         return instance
 
-    def get_instance(self):
+    def get_instance(self, dbo_owner):
         instance = self.instance_cls()
         instance.template = self
         instance.template_key = self.dbo_key
+        instance.dbo_owner = dbo_owner
         self._instances.add(instance)
         return instance
 
-    def config_instance(self, instance, owner):
+    def config_instance(self, instance):
         pass
 
 
 class TemplateInstance(CoreDBO):
     template = None
+    owner = AutoField()
 
     @classmethod
     def _mixin_init(cls, *_):

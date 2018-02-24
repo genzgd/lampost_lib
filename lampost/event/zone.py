@@ -24,3 +24,7 @@ class Attachable(metaclass=CoreMeta):
             self.attached = False
         else:
             log.warn("Detaching already detached obj: {}", self)
+
+    def _on_db_deleted(self):
+        if self.attached:
+            self.detach()

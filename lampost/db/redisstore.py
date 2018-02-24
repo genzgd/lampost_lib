@@ -85,10 +85,6 @@ class RedisStore:
         self._object_map[dbo.dbo_key] = dbo
         return dbo
 
-    def update_object(self, dbo, dbo_dict):
-        dbo.hydrate(dbo_dict)
-        return self.save_object(dbo, True)
-
     def delete_object(self, dbo):
         key = dbo.dbo_key
         dbo.db_deleted()
@@ -143,16 +139,6 @@ class RedisStore:
         for dbo in self.load_object_set(dbo_class, set_key):
             self.delete_object(dbo)
         self.delete_key(set_key)
-
-    def reload_object(self, dbo_key):
-        dbo = self._object_map.get(dbo_key)
-        if dbo:
-            json_str = self.redis.get(dbo_key)
-            if not json_str:
-                log.warn("Failed to find {} in database for reload", dbo_key)
-                return None
-            return self.update_object(dbo, json_decode(json_str))
-        return self.load_object(dbo_key)
 
     def evict_object(self, dbo):
         self._object_map.pop(dbo.dbo_key, None)

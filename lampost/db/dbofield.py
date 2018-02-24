@@ -268,8 +268,8 @@ def load_any(class_id, dbo_owner, dto_repr):
     if template_key:
         template = db.load_object(template_key)
         if template:
-            instance = template.get_instance().hydrate(dto_repr)
-            template.config_instance(instance, dbo_owner)
+            instance = template.get_instance(dbo_owner).hydrate(dto_repr)
+            template.config_instance(instance)
             return instance
         else:
             log.warn("Missing template for template_key {} owner {}", template_key, dbo_owner.dbo_id)

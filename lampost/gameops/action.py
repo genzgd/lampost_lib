@@ -88,6 +88,10 @@ def action_handler(func):
             func(self, *args, **kwargs)
         except ClientError as client_error:
             self.display_line(client_error.client_message, client_error.display)
+        except Exception:
+            self.display_line('Something seems to have gone wrong in the back room.  Management is investigating',
+                              'error')
+            log.exception("Unexpected action exception", exc_info = True)
     return wrapper
 
 
@@ -114,19 +118,22 @@ class ActionCache:
                 action_map[action].append(verb)
         return action_map
 
-    def add(self, provider):
-        try:
-            for action in provider:
-                self._add_action(action)
-        except TypeError:
-            self._add_action(provider)
+    def add(self, *providers):
+        for provider in providers:
+            try:
+                for action in provider:
+                    self._add_action(action)
+            except TypeError:
+                self._add_action(provider)
+        return self
 
-    def remove(self, provider):
-        try:
-            for action in provider:
-                self._remove_action(action)
-        except TypeError:
-            self._remove_action(provider)
+    def remove(self, *providers):
+        for provider in providers:
+            try:
+                for action in provider:
+                    self._remove_action(action)
+            except TypeError:
+                self._remove_action(provider)
 
     def refresh(self, provider):
         self._primary_map.clear()

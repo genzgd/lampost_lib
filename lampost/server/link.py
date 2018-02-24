@@ -90,6 +90,7 @@ class LinkHandler(WebSocketHandler):
                 error_response['client_message'] = e.client_message
             else:
                 error_response['http_status'] = 500
+                error_response['client_message'] = "Oops -- something went wrong back there somewhere.  We're looking into it"
                 log.exception('Link Handler Exception', e)
             if req_id is not None:
                 self.write_message(json_encode(error_response))
@@ -113,10 +114,10 @@ class LinkRouter():
     def _router(self, path, **kwargs):
         self._pre_route()
         try:
-            method_name = path.split('/')[-1]
-            return getattr(self, method_name)(**kwargs)
+            method = getattr(self, path.split('/')[-1])
         except (IndexError, AttributeError):
             raise NoRouteError(path)
+        return method(**kwargs)
 
     def _pre_route(self):
         pass

@@ -52,7 +52,7 @@ def update_account(session, player, user_id, user_update, **_):
     else:
         user_update['password'] = user.password
     user_update['email'] = user_update['email'].lower()
-    db.update_object(user, user_update)
+    user.update(user_update)
     edit_update.publish_edit('update', user)
 
 

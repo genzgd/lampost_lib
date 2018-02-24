@@ -62,17 +62,11 @@ class CoreDBO(DBOAspect):
                     pass
             if not dbo_value and dbo_field.required:
                 missing_fields.append(field)
-        self.on_loaded()
         if missing_fields:
             log.warn("Missing required fields {} in class {} dto {}", ', '.join(missing_fields),
                      cls_name(self.__class__), dto)
             return None
-        return self
-
-    def reload(self):
-        call_mro(self, '_pre_reload')
-        self.hydrate(self.save_value)
-        call_mro(self, '_on_reload')
+        self.on_loaded()
         return self
 
     def clone(self):
@@ -82,6 +76,15 @@ class CoreDBO(DBOAspect):
         clone.template = self
         clone.on_loaded()
         return clone
+
+    def reload(self):
+        call_mro(self, '_pre_update')
+        self.hydrate(self.save_value)
+
+    def update(self, dto=None):
+        call_mro(self, 'pre_update')
+        self.hydrate(dto if dto else self.save_value)
+        db.save_object(self)
 
     @property
     def save_value(self):

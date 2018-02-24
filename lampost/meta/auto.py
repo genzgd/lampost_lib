@@ -1,7 +1,7 @@
 import copy
 
 
-class AutoField():
+class AutoField:
     field = None
 
     def __init__(self, default=None):
@@ -49,3 +49,4 @@ class TemplateField(AutoField):
                 return getattr(instance.template, self.field)
             except AttributeError:
                 return self._get_default(instance)
+
