@@ -90,8 +90,8 @@ def action_handler(func):
             self.display_line(client_error.client_message, client_error.display)
         except Exception:
             self.display_line('Something seems to have gone wrong in the back room.  Management is investigating',
-                              'error')
-            log.exception("Unexpected action exception", exc_info = True)
+                              'system')
+            log.exception("Unexpected action exception")
     return wrapper
 
 
@@ -190,7 +190,7 @@ class ActionProvider(metaclass=CoreMeta):
         return itertools.chain((getattr(self, func_name) for func_name in self.class_providers), self.instance_providers)
 
     def _pre_reload(self):
-        self.instance_providers = []
+        del self.instance_providers
 
 
 @script_builder

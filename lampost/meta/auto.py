@@ -7,7 +7,7 @@ class AutoField:
     def __init__(self, default=None):
         self.default = default
         if default is None or isinstance(default, (int, str, bool, tuple, float)):
-            self._get_default = lambda instance: self.default
+            self._get_default = self._raw_default
         else:
             self._get_default = self._complex_default
 
@@ -33,8 +33,15 @@ class AutoField:
         instance.__dict__[self.field] = new_value
         return new_value
 
+    def _raw_default(self, _):
+        return self.default
+
     def _meta_init(self, field):
         self.field = field
+
+    @property
+    def _immutable(self):
+        return self._get_default == self._raw_default
 
 
 class TemplateField(AutoField):

@@ -1,8 +1,11 @@
 from threading import local
 
+import collections
+
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField, TemplateField
 from lampost.db.registry import get_dbo_class
+from lampost.util.classes import call_each, call_values, call_by_name, no_op
 
 log = Injected('log')
 db = Injected('datastore')
@@ -21,10 +24,16 @@ class DBOField(AutoField):
 
     def _meta_init(self, field):
         self.field = field
-        self._hydrate_func = get_hydrate_func(load_any, self.default, self.dbo_class_id)
-        self.dto_value = value_transform(to_dto_repr, self.default, field, self.dbo_class_id, for_json=True)
-        self.cmp_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id)
-        self._save_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id, for_json=True)
+        self._exec_func = no_op if self._immutable else get_exec_func(self.default)
+        if self.dbo_class_id:
+            self._hydrate_func = get_hydrate_func(load_any, self.default, self.dbo_class_id)
+            self.dto_value = value_transform(to_dto_repr, self.default, field, self.dbo_class_id, for_json=True)
+            self.cmp_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id)
+            self._save_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id, for_json=True)
+        else:
+            self._hydrate_func = from_json_func(self.default)
+            self.cmp_value = raw_field(field)
+            self.dto_value = self._save_value = to_json_func(self.default, field)
 
     def save_value(self, instance):
         value = self._save_value(instance)
@@ -35,6 +44,9 @@ class DBOField(AutoField):
         value = self._hydrate_func(instance, dto_repr)
         setattr(instance, self.field, value)
         return value
+
+    def exec(self, instance, func_name, *args, **kwargs):
+        self._exec_func(self.__get__(instance), func_name, *args, **kwargs)
 
     def check_default(self, value, instance):
         if hasattr(self.default, 'save_value'):
@@ -140,15 +152,18 @@ class DBOLField(DBOField):
         self._set_value = set_transform(to_dto_repr, self.default, self.dbo_class_id)
 
 
+def raw_field(field):
+    return lambda instance: getattr(instance, field)
+
+
 def get_hydrate_func(load_func, default, class_id):
-    if not class_id:
-        return lambda instance, dto_repr: dto_repr
     if isinstance(default, set):
         return lambda instance, dto_repr_list: {dbo for dbo in (load_func(class_id, instance, dto_repr) for
                                                                 dto_repr in dto_repr_list) if dbo is not None}
-    if isinstance(default, list):
-        return lambda instance, dto_repr_list: [dbo for dbo in (load_func(class_id, instance, dto_repr) for
-                                                                dto_repr in dto_repr_list) if dbo is not None]
+    if isinstance(default, collections.Sequence):
+        field_class = default.__class__
+        return lambda instance, dto_repr_list: field_class(dbo for dbo in (load_func(class_id, instance, dto_repr) for
+                                                                dto_repr in dto_repr_list) if dbo is not None)
     if isinstance(default, dict):
         return lambda instance, dto_repr_dict: {key: dbo for key, dbo in ((key, load_func(class_id, instance, dto_repr))
                                                                           for key, dto_repr in dto_repr_dict.items()) if
@@ -156,23 +171,48 @@ def get_hydrate_func(load_func, default, class_id):
     return lambda instance, dto_repr: load_func(class_id, instance, dto_repr)
 
 
+def get_exec_func(default):
+    if isinstance(default, collections.Mapping):
+        return call_values
+    if isinstance(default, collections.MutableSequence):
+        return call_each
+    return call_by_name
+
+
+def from_json_func(default):
+    def _identity(_, dto_repr):
+        return dto_repr
+    if default is None or isinstance(default, (collections.Mapping, str)):
+        return _identity
+    if isinstance(default, collections.Sequence):
+        field_class = default.__class__
+        return lambda instance, dto_repr: field_class(value for value in dto_repr)
+    return _identity
+
+
+def to_json_func(default, field):
+    if default is None or isinstance(default, (collections.Mapping, str)):
+        return raw_field(field)
+    if isinstance(default, collections.MutableSequence):
+        return lambda instance: [value for value in getattr(instance, field)]
+    return raw_field(field)
+
+
 def value_transform(trans_func, default, field, class_id, for_json=False):
-    if not class_id:
-        return lambda instance: getattr(instance, field)
-    if isinstance(default, set) and not for_json:
-        return lambda instance: {res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None}
-    if isinstance(default, list) or isinstance(default, set):
-        return lambda instance: [res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None]
     if isinstance(default, dict):
         return lambda instance: {key: res for key, res in ((key, trans_func(value, class_id)) for key, value in getattr(instance, field).items()) if res is not None}
-
+    if isinstance(default, collections.MutableSequence) and not for_json:
+        return lambda instance: default.__class__(res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None)
+    if isinstance(default, collections.MutableSequence):
+        return lambda instance: [res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None]
     return lambda instance: trans_func(getattr(instance, field), class_id)
 
 
 def set_transform(trans_func, default, class_id):
-    if isinstance(default, list):
-        return lambda values: [trans_func(value, class_id) for value in values]
-    if isinstance(default, dict):
+    field_class = default.__class__
+    if isinstance(default, collections.MutableSequence):
+        return lambda values: field_class([trans_func(value, class_id) for value in values])
+    if isinstance(default, collections.Mapping):
         return lambda value_dict: {key: trans_func(value, class_id) for key, value in value_dict}
     return lambda value: trans_func(value, class_id)
 
@@ -215,7 +255,6 @@ def to_dbo_key(dbo, class_id):
     try:
         return dbo.dbo_key if class_id == 'untyped' else dbo.dbo_id
     except AttributeError:
-        # The value is
         return dbo
 
 

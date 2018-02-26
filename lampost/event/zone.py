@@ -19,12 +19,19 @@ class Attachable(metaclass=CoreMeta):
 
     def detach(self):
         if self.attached:
-            ev.detach_events(self)
-            call_mro(self, '_on_detach')
-            self.attached = False
+            self._detach()
         else:
             log.warn("Detaching already detached obj: {}", self)
 
+    def _detach(self):
+        ev.detach_events(self)
+        call_mro(self, '_on_detach')
+        self.attached = False
+
+    def _pre_reload(self):
+        if self.attached:
+            self._detach()
+
     def _on_db_deleted(self):
         if self.attached:
-            self.detach()
+            self._detach()

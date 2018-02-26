@@ -1,3 +1,5 @@
+from threading import local
+
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.core import CoreMeta
 from lampost.util.classes import call_mro, cls_name
@@ -9,6 +11,10 @@ log = Injected('log')
 perm = Injected('perm')
 db = Injected('datastore')
 module_inject(__name__)
+
+# This is used to mark a "hydrate" as an update to allow clean up of any existing dbo objects on a database update
+op_status = local()
+op_status.is_update = False
 
 
 class DBOAspect(metaclass=CoreMeta):
@@ -51,7 +57,9 @@ class CoreDBO(DBOAspect):
 
     def hydrate(self, dto):
         missing_fields = []
+        updating = op_status.is_update
         for field, dbo_field in self.dbo_fields.items():
+            updating and dbo_field.exec(self, '_pre_reload')
             if field in dto:
                 dbo_value = dbo_field.hydrate(self, dto[field])
             else:
@@ -82,8 +90,12 @@ class CoreDBO(DBOAspect):
         self.hydrate(self.save_value)
 
     def update(self, dto=None):
+        for dbo_field in self.dbo_fields.values():
+            dbo_field.pre_update(self)
         call_mro(self, 'pre_update')
+        op_status.is_update = True
         self.hydrate(dto if dto else self.save_value)
+        op_status.is_update = False
         db.save_object(self)
 
     @property
