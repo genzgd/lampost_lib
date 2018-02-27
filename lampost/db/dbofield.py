@@ -22,10 +22,10 @@ class DBOField(AutoField):
         self.required = required
         self.dbo_class_id = dbo_class_id
         self.cmp_default = json_default(default)
+        self._exec_func = no_op if self._immutable else get_exec_func(self.default)
 
     def _meta_init(self, field):
         self.field = field
-        self._exec_func = no_op if self._immutable else get_exec_func(self.default)
         if self.dbo_class_id:
             self._hydrate_func = get_hydrate_func(load_any, self.default, self.dbo_class_id)
             self.dto_value = value_transform(to_dto_repr, self.default, field, self.dbo_class_id, for_json=True)
@@ -266,7 +266,8 @@ def to_dbo_key(dbo, class_id):
 
 
 def load_keyed(class_id, dbo_owner, dbo_id):
-    return db.load_object(dbo_id, class_id if class_id != "untyped" else None)
+    if dbo_id:
+        return db.load_object(dbo_id, class_id if class_id != "untyped" else None)
 
 
 def save_keyed(class_id, dbo_owner, dto_repr):

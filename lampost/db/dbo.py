@@ -90,8 +90,6 @@ class CoreDBO(DBOAspect):
         self.hydrate(self.save_value)
 
     def update(self, dto=None):
-        for dbo_field in self.dbo_fields.values():
-            dbo_field.pre_update(self)
         call_mro(self, 'pre_update')
         op_status.is_update = True
         self.hydrate(dto if dto else self.save_value)

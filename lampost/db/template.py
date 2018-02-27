@@ -26,7 +26,7 @@ class Template(metaclass=CoreMeta):
 
     def _on_db_deleted(self):
         for instance in self._instances:
-            call_mro(instance, '_on_db_deleted')
+            call_mro('_on_db_deleted', instance)
 
     def create_instance(self, dbo_owner):
         instance = self.get_instance(dbo_owner)

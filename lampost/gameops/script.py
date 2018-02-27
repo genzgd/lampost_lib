@@ -166,8 +166,6 @@ class Scriptable(DBOAspect):
         except Exception:
             log.exception("Exception on user defined 'load_scripts'")
 
-
-
     @Shadow
     def load_scripts(self, *args, **kwargs):
         pass
