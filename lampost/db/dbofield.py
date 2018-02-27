@@ -21,6 +21,7 @@ class DBOField(AutoField):
         super().__init__(default)
         self.required = required
         self.dbo_class_id = dbo_class_id
+        self.cmp_default = json_default(default)
 
     def _meta_init(self, field):
         self.field = field
@@ -52,7 +53,7 @@ class DBOField(AutoField):
         if hasattr(self.default, 'save_value'):
             if value == self.default.save_value:
                 raise KeyError
-        elif value == self.default:
+        elif value == self.cmp_default:
             raise KeyError
 
 
@@ -180,7 +181,7 @@ def get_exec_func(default):
 
 
 def from_json_func(default):
-    def _identity(_, dto_repr):
+    def _identity(instance, dto_repr):
         return dto_repr
     if default is None or isinstance(default, (collections.Mapping, str)):
         return _identity
@@ -196,6 +197,12 @@ def to_json_func(default, field):
     if isinstance(default, collections.MutableSequence):
         return lambda instance: [value for value in getattr(instance, field)]
     return raw_field(field)
+
+
+def json_default(default):
+    if isinstance(default, collections.MutableSequence):
+        return [value for value in default]
+    return default
 
 
 def value_transform(trans_func, default, field, class_id, for_json=False):
