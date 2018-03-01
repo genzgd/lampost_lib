@@ -14,7 +14,6 @@ module_inject(__name__)
 
 # This is used to mark a "hydrate" as an update to allow clean up of any existing dbo objects on a database update
 op_status = local()
-op_status.is_update = False
 
 
 class DBOAspect(metaclass=CoreMeta):
@@ -25,7 +24,6 @@ class DBOAspect(metaclass=CoreMeta):
         if 'class_id' in new_attrs:
             # Override any existing class id reference with this child class
             set_dbo_class(cls.class_id, cls)
-
         cls._update(bases, 'dbo_fields')
         cls._update_dbo_fields(new_attrs)
 
@@ -57,7 +55,9 @@ class CoreDBO(DBOAspect):
 
     def hydrate(self, dto):
         missing_fields = []
-        updating = op_status.is_update
+        updating = hasattr(op_status, 'updated')
+        if updating and self in op_status.updated:
+            return self
         for field, dbo_field in self.dbo_fields.items():
             updating and dbo_field.exec(self, '_pre_reload')
             if field in dto:
@@ -75,6 +75,8 @@ class CoreDBO(DBOAspect):
                      cls_name(self.__class__), dto)
             return None
         self.on_loaded()
+        if updating:
+            op_status.updated.add(self)
         return self
 
     def clone(self):
@@ -84,17 +86,6 @@ class CoreDBO(DBOAspect):
         clone.template = self
         clone.on_loaded()
         return clone
-
-    def reload(self):
-        call_mro(self, '_pre_update')
-        self.hydrate(self.save_value)
-
-    def update(self, dto=None):
-        call_mro(self, 'pre_update')
-        op_status.is_update = True
-        self.hydrate(dto if dto else self.save_value)
-        op_status.is_update = False
-        db.save_object(self)
 
     @property
     def save_value(self):
@@ -232,6 +223,13 @@ class KeyDBO(CoreDBO):
         if getattr(self, 'class_id', self.dbo_key_type) != self.dbo_key_type:
             save_value['class_id'] = self.class_id
         return save_value
+
+    def update(self, dto=None):
+        db.save_object(self)
+        op_status.updated = set()
+        self.hydrate(dto if dto else self.save_value)
+        del op_status.updated
+        db.save_object(self)
 
     def db_created(self):
         call_mro(self, '_on_db_created')

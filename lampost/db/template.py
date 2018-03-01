@@ -16,13 +16,9 @@ class Template(metaclass=CoreMeta):
     instance_cls = None
     _instances = AutoField(WeakSet())
 
-    def _pre_update(self):
-        for instance in self._instances:
-            call_mro('_pre_update', instance)
-
     def _on_loaded(self):
         for instance in self._instances:
-            instance.reload()
+            instance.on_loaded()
 
     def _on_db_deleted(self):
         for instance in self._instances:

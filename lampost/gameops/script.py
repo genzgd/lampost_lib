@@ -153,7 +153,7 @@ class Scriptable(DBOAspect):
     script_refs = DBOCField([], 'script_ref')
     shadow_chains = AutoField(defaultdict(list))
 
-    def _pre_update(self):
+    def _pre_reload(self):
         for name in  {name for name, value in self.__dict__.items() if hasattr(value, '_user_def')}:
             del self.__dict__[name]
         self.shadow_chains = defaultdict(list)

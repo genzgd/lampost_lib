@@ -57,7 +57,7 @@ class DBOField(AutoField):
             raise KeyError
 
 
-class DBOTField():
+class DBOTField:
     """
     This class always passes access to the template.  It also provides a blueprint to auto generate the appropriate
     DBO fields in the Template class.
