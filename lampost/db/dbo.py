@@ -1,19 +1,13 @@
-from threading import local
-
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.core import CoreMeta
-from lampost.util.classes import call_mro, cls_name
-from lampost.db import dbofield
+from lampost.util.classes import call_mro, cls_name, call_each
 from lampost.db.registry import set_dbo_class, get_dbo_class
-from lampost.db.dbofield import DBOField
+from lampost.db.dbofield import DBOField, op_status, OID
 
 log = Injected('log')
 perm = Injected('perm')
 db = Injected('datastore')
 module_inject(__name__)
-
-# This is used to mark a "hydrate" as an update to allow clean up of any existing dbo objects on a database update
-op_status = local()
 
 
 class DBOAspect(metaclass=CoreMeta):
@@ -55,11 +49,7 @@ class CoreDBO(DBOAspect):
 
     def hydrate(self, dto):
         missing_fields = []
-        updating = hasattr(op_status, 'updated')
-        if updating and self in op_status.updated:
-            return self
         for field, dbo_field in self.dbo_fields.items():
-            updating and dbo_field.exec(self, '_pre_reload')
             if field in dto:
                 dbo_value = dbo_field.hydrate(self, dto[field])
             else:
@@ -75,8 +65,6 @@ class CoreDBO(DBOAspect):
                      cls_name(self.__class__), dto)
             return None
         self.on_loaded()
-        if updating:
-            op_status.updated.add(self)
         return self
 
     def clone(self):
@@ -99,12 +87,20 @@ class CoreDBO(DBOAspect):
             save_value['tk'] = self.template_key
         return save_value
 
+    def capture_oids(self):
+        for dbo_field in self.dbo_fields.values():
+            dbo_field.capture_oids(self)
+
     def describe(self):
         return self._describe([], 0)
 
     @property
     def dto_value(self):
-        return {field: dbo_field.dto_value(self) for field, dbo_field in self.dbo_fields.items()}
+        return {field: dbo_field.dto_value(self) for field, dbo_field in self.dbo_fields.items() if dbo_field.editable}
+
+    def merge_hidden(self, dto):
+        for field, dbo_field in self.dbo_fields.items():
+            dto[field] = dbo_field.merge_hidden(self, dto.get(field))
 
     @property
     def cmp_value(self):
@@ -218,18 +214,26 @@ class KeyDBO(CoreDBO):
 
     @property
     def save_value(self):
-        dbofield.save_value_refs.current = []
+        op_status.save_value_refs = []
         save_value = super().save_value
         if getattr(self, 'class_id', self.dbo_key_type) != self.dbo_key_type:
             save_value['class_id'] = self.class_id
         return save_value
 
     def update(self, dto=None):
+        op_status.update_refs = {}
+        op_status.refs_used = set()
+        self.capture_oids()
+        if dto:
+            dto.update(self.hidden_value)
+            self.hydrate(dto)
+        else:
+            self.hydrate(self.save_value)
         db.save_object(self)
-        op_status.updated = set()
-        self.hydrate(dto if dto else self.save_value)
-        del op_status.updated
-        db.save_object(self)
+        removed_objects = set(op_status.update_refs.values()) - op_status.refs_used
+        call_each(removed_objects, '_on_db_deleted')
+        del op_status.update_refs
+        del op_status.refs_used
 
     def db_created(self):
         call_mro(self, '_on_db_created')
@@ -241,7 +245,7 @@ class KeyDBO(CoreDBO):
         db.save_object(self, autosave=True)
 
     def to_db_value(self):
-        return self.save_value, dbofield.save_value_refs.current
+        return self.save_value, op_status.save_value_refs
 
 
 class ParentDBO(KeyDBO, OwnerDBO):
@@ -294,7 +298,7 @@ class ChildDBO(KeyDBO):
 
 
 #  This class is here to catch possible errors in 'untyped' collections
-class Untyped():
+class Untyped:
     def hydrate(self, dto_repr):
         # This should never get called, as 'untyped' fields should always hold
         # templates or actual dbo_references with saved class_ids.

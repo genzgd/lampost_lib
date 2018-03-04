@@ -1,6 +1,8 @@
 import time
 import json
 
+import binascii
+
 pronouns = {'none': ['it', 'it', 'its', 'itself', 'its'],
             'male': ['he', 'him', 'his', 'himself', 'his'],
             'female': ['she', 'her', 'her', 'herself', 'hers']}
@@ -102,3 +104,8 @@ def str_to_primitive(value):
 
 def args_print(**kwargs):
     return ''.join(['{0}:{1} '.format(key, str(value)) for key, value in kwargs.items()])
+
+
+def int_to_bytes(n):
+    bytes = n.to_bytes((n.bit_length() + 7) // 8, 'big') or b'\0'
+    return binascii.b2a_base64(bytes)[:-1].decode()

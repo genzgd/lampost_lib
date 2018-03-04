@@ -6,7 +6,7 @@ from lampost.db.dbo import CoreDBO
 from lampost.meta.auto import AutoField
 from lampost.meta.core import CoreMeta
 from lampost.db.registry import get_dbo_class, set_instance_class
-from lampost.db.dbofield import DBOField, DBOTField, DBOCField
+from lampost.db.dbofield import DBOField, DBOTField, DBOCField, oid_class
 from lampost.util.classes import call_mro
 
 log = logging.getLogger(__name__)
@@ -42,9 +42,9 @@ class Template(metaclass=CoreMeta):
         pass
 
 
+@oid_class
 class TemplateInstance(CoreDBO):
     template = None
-    owner = AutoField()
 
     @classmethod
     def _mixin_init(cls, *_):

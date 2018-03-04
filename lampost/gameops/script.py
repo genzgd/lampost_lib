@@ -6,7 +6,7 @@ from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
 from lampost.db.dbo import DBOAspect, CoreDBO
-from lampost.db.dbofield import DBOField, DBOLField, DBOCField
+from lampost.db.dbofield import DBOField, DBOLField, DBOCField, oid_class
 
 log = Injected('log')
 ev = Injected('dispatcher')
@@ -123,6 +123,7 @@ class UserScript(DBOAspect):
         return self._script_func
 
 
+@oid_class
 class ScriptRef(CoreDBO):
     class_id = 'script_ref'
 

@@ -27,4 +27,4 @@ class Attachable(metaclass=CoreMeta):
 
     def _on_db_deleted(self):
         if self.attached:
-            self._detach()
+            self.detach()

@@ -2,39 +2,95 @@ from threading import local
 
 import collections
 
+from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField, TemplateField
 from lampost.db.registry import get_dbo_class
-from lampost.util.classes import call_each, call_values, call_by_name, no_op
 
 log = Injected('log')
 db = Injected('datastore')
 module_inject(__name__)
 
-# This is used to collect child references while calculating save values, rather than attempting to pass this
-# collection recursively
-save_value_refs = local()
+# This is used to collect child references and temporary template keys while calculating save values,
+# rather than attempting to pass this collection recursively
+op_status = local()
+
+
+@on_app_start
+def set_base_oid():
+    OID.base_oid = db.db_counter('base_oid')
+
+
+class OID:
+    base_oid = 0
+    next_oid = 0
+    required = False
+
+    @classmethod
+    def _force_value(cls, instance):
+        try:
+            return instance.__dict__['_oid']
+        except KeyError:
+            cls.next_oid += 1
+            return '{}${}'.format(hex(cls.base_oid)[2:], hex(cls.next_oid)[2:])
+
+    @classmethod
+    def __get__(cls, instance, owner):
+        if instance is None:
+            return
+        return cls._force_value(instance)
+
+    @classmethod
+    def hydrate(cls, instance, dto_repr):
+        if dto_repr is None:
+            cls._force_value(instance)
+        else:
+            instance.__dict__['_oid'] = dto_repr
+
+    @classmethod
+    def save_value(cls, instance):
+        return cls._force_value(instance)
+
+    @classmethod
+    def dto_value(cls, instance):
+        return cls._force_value(instance)
+
+    @classmethod
+    def merge_hidden(cls, instance, dto_repr):
+        return dto_repr if dto_repr else cls._force_value(instance)
+
+    @staticmethod
+    def capture_oids(instance):
+        pass
+
+
+def oid_class(cls):
+    cls.add_dbo_fields({'_oid' : OID})
+    return cls
 
 
 class DBOField(AutoField):
-    def __init__(self, default=None, dbo_class_id=None, required=False):
+    def __init__(self, default=None, dbo_class_id=None, required=False, editable=True):
         super().__init__(default)
         self.required = required
+        self.editable = editable
         self.dbo_class_id = dbo_class_id
         self.cmp_default = json_default(default)
-        self._exec_func = no_op if self._immutable else get_exec_func(self.default)
 
     def _meta_init(self, field):
         self.field = field
         if self.dbo_class_id:
             self._hydrate_func = get_hydrate_func(load_any, self.default, self.dbo_class_id)
-            self.dto_value = value_transform(to_dto_repr, self.default, field, self.dbo_class_id, for_json=True)
-            self.cmp_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id)
-            self._save_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id, for_json=True)
+            self.dto_value = value_transform(to_dto_repr, self.default, field, for_json=True)
+            self.cmp_value = value_transform(to_save_repr, self.default, field)
+            self._save_value = value_transform(to_save_repr, self.default, field, for_json=True)
+            self.capture_oids = value_exec(capture_oid, self.default, field)
+            self.merge_hidden = value_exec(merge_hidden, self.default, field)
         else:
             self._hydrate_func = from_json_func(self.default)
             self.cmp_value = raw_field(field)
             self.dto_value = self._save_value = to_json_func(self.default, field)
+            self.merge_hidden = lambda instance, dto_repr:  dto_repr if dto_repr is not None or self.editable else self.save_value(instance)
 
     def save_value(self, instance):
         value = self._save_value(instance)
@@ -46,8 +102,9 @@ class DBOField(AutoField):
         setattr(instance, self.field, value)
         return value
 
-    def exec(self, instance, func_name, *args, **kwargs):
-        self._exec_func(self.__get__(instance), func_name, *args, **kwargs)
+    @staticmethod
+    def capture_oids(instance):
+        pass
 
     def check_default(self, value, instance):
         if hasattr(self.default, 'save_value'):
@@ -172,14 +229,6 @@ def get_hydrate_func(load_func, default, class_id):
     return lambda instance, dto_repr: load_func(class_id, instance, dto_repr)
 
 
-def get_exec_func(default):
-    if isinstance(default, collections.Mapping):
-        return call_values
-    if isinstance(default, collections.MutableSequence):
-        return call_each
-    return call_by_name
-
-
 def from_json_func(default):
     def _identity(instance, dto_repr):
         return dto_repr
@@ -205,19 +254,43 @@ def json_default(default):
     return default
 
 
-def value_transform(trans_func, default, field, class_id, for_json=False):
+def value_transform(trans_func, default, field, for_json=False):
     if isinstance(default, dict):
-        return lambda instance: {key: res for key, res in ((key, trans_func(value, class_id)) for key, value in getattr(instance, field).items()) if res is not None}
-    if isinstance(default, collections.MutableSequence) and not for_json:
-        return lambda instance: default.__class__(res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None)
+        return lambda instance, *exec_args: {key: res for key, res in ((key, trans_func(value, *exec_args)) \
+            for key, value in getattr(instance, field).items()) if res is not None}
     if isinstance(default, collections.MutableSequence):
-        return lambda instance: [res for res in (trans_func(value, class_id) for value in getattr(instance, field)) if res is not None]
-    return lambda instance: trans_func(getattr(instance, field), class_id)
+        field_class = [] if for_json else default.__class__
+        return lambda instance, *exec_args: field_class(res for res in (trans_func(value, *exec_args) \
+            for value in getattr(instance, field)) if res is not None)
+    return lambda instance, *exec_args: trans_func(getattr(instance, field), *exec_args)
+
+
+def value_exec(exec_func, default, field):
+    if isinstance(default, dict):
+        def _exec_values(instance, *exec_args):
+            for instance in getattr(instance, field).values():
+                exec_func(instance, *exec_args)
+        return _exec_values
+    if isinstance(default, collections.MutableSequence):
+        def _exec_items(instance, *exec_args):
+            for value in getattr(instance, field):
+                exec_func(value, *exec_args)
+        return _exec_items
+    return lambda instance, *exec_args: exec_func(getattr(instance, field), *exec_args)
+
+
+def capture_oid(dbo):
+    if not hasattr(dbo, 'dbo_id'):
+        try:
+            op_status.update_refs[dbo.__dict__['_oid']] = dbo
+        except KeyError:
+            pass
+        dbo.capture_oids()
 
 
 def set_transform(trans_func, default, class_id):
-    field_class = default.__class__
     if isinstance(default, collections.MutableSequence):
+        field_class = default.__class__
         return lambda values: field_class([trans_func(value, class_id) for value in values])
     if isinstance(default, collections.Mapping):
         return lambda value_dict: {key: trans_func(value, class_id) for key, value in value_dict}
@@ -242,7 +315,7 @@ def to_dto_repr(dbo, class_id):
 
 def to_save_repr(dbo, class_id):
     if hasattr(dbo, 'dbo_id'):
-        save_value_refs.current.append(dbo.dbo_key)
+        op_status.save_value_refs.append(dbo.dbo_key)
         return dbo.dbo_key if class_id == 'untyped' else dbo.dbo_id
     try:
         save_value = dbo.save_value
@@ -250,12 +323,18 @@ def to_save_repr(dbo, class_id):
         return None
     if hasattr(dbo, 'template_key'):
         save_value['tk'] = dbo.template_key
-        save_value_refs.current.append(dbo.template_key)
+        op_status.save_value_refs.append(dbo.template_key)
     elif getattr(dbo, 'class_id', class_id) != class_id:
         # If the object has a different class_id than field definition thinks it should have
         # we need to save the actual class_id
         save_value['class_id'] = dbo.class_id
     return save_value
+
+
+def merge_hidden(dbo, dto_repr):
+    if hasattr(dbo, 'dbo_id'):
+        return dto_repr
+    return dbo.merge_hidden(dto_repr)
 
 
 def to_dbo_key(dbo, class_id):
@@ -272,15 +351,15 @@ def load_keyed(class_id, dbo_owner, dbo_id):
 
 def save_keyed(class_id, dbo_owner, dto_repr):
     if class_id == 'untyped':
-        save_value_refs.current.append(dto_repr)
+        op_status.save_value_refs.append(dto_repr)
     else:
-        save_value_refs.current.append('{}:{}'.format(class_id, dto_repr))
+        op_status.save_value_refs.append('{}:{}'.format(class_id, dto_repr))
     return dto_repr
 
 
 def load_any(class_id, dbo_owner, dto_repr):
     if not dto_repr:
-        return
+        return None
 
     dbo_ref_id = None
     try:
@@ -309,6 +388,14 @@ def load_any(class_id, dbo_owner, dto_repr):
     if dbo_ref_id:
         return db.load_object(dbo_ref_id)
 
+    # If we have an update reference, we already have the dbo object, and it just needs to be rehydrated
+    if hasattr(op_status, 'update_refs'):
+        orig_dbo = op_status.update_refs.get(dto_repr.get('_oid'))
+        if orig_dbo:
+            op_status.refs_used.add(orig_dbo)
+            orig_dbo.hydrate(dto_repr)
+            return orig_dbo
+
     # If this is a template, it should have a template key, so we load the template from the database using
     # the full key, then hydrate any non-template fields from the dictionary
     template_key = dto_repr.get('tk')
@@ -318,9 +405,8 @@ def load_any(class_id, dbo_owner, dto_repr):
             instance = template.get_instance(dbo_owner).hydrate(dto_repr)
             template.config_instance(instance)
             return instance
-        else:
-            log.warn("Missing template for template_key {} owner {}", template_key, dbo_owner.dbo_id)
-            return
+        log.warn("Missing template for template_key {} owner {}", template_key, dbo_owner.dbo_id)
+        return None
 
     # Finally, it's not a template and it is not a reference to an independent DB object, it must be a pure child
     # object of this class, just set the owner and hydrate it

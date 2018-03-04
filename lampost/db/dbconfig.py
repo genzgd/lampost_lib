@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from lampost.db.dbofield import oid_class
 from lampost.di.resource import Injected, module_inject
 from lampost.db.dbo import DBOField, ParentDBO, ChildDBO, CoreDBO
 
@@ -88,6 +89,7 @@ class ConfigSection(ChildDBO):
     settings = DBOField([], 'setting')
 
 
+@oid_class
 class Setting(CoreDBO):
     class_id = 'setting'
     name = DBOField()
