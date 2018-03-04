@@ -67,6 +67,14 @@ class CoreDBO(DBOAspect):
         self.on_loaded()
         return self
 
+    def edit_hydrate(self, dto):
+        for field, dbo_field in self.dbo_fields.items():
+            if dbo_field.editable:
+                if field in dto:
+                    dbo_field.hydrate(self, dto[field])
+                else:
+                    delattr(self, field)
+
     def clone(self):
         clone = self.__class__()
         if hasattr(self, 'dbo_id'):
@@ -97,10 +105,6 @@ class CoreDBO(DBOAspect):
     @property
     def dto_value(self):
         return {field: dbo_field.dto_value(self) for field, dbo_field in self.dbo_fields.items() if dbo_field.editable}
-
-    def merge_hidden(self, dto):
-        for field, dbo_field in self.dbo_fields.items():
-            dto[field] = dbo_field.merge_hidden(self, dto.get(field))
 
     @property
     def cmp_value(self):
@@ -138,47 +142,8 @@ class CoreDBO(DBOAspect):
         return display
 
 
-class SystemDBO(DBOAspect):
-    def can_read(self, immortal):
-        return True
-
-    def can_write(self, immortal):
-        return perm.is_supreme(immortal) or immortal.imm_level > getattr(self, 'imm_level', 0)
-
-
-class OwnerDBO(DBOAspect):
-    owner_id = DBOField('lampost')
-    read_access = DBOField(0)
-    write_access = DBOField(0)
-
-    @property
-    def imm_level(self):
-        try:
-            return perm.immortals[self.owner_id] + 1
-        except KeyError:
-            return perm.perm_to_level('admin')
-
-    def _on_db_created(self):
-        log.info("{} created new object {}", self.owner_id, self.dbo_key)
-        db.add_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
-
-    def _on_db_deleted(self):
-        db.delete_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
-
-    def can_read(self, immortal):
-        return immortal.imm_level >= self.read_access
-
-    def can_write(self, immortal):
-        if perm.is_supreme(immortal) or immortal.dbo_id == self.owner_id:
-            return True
-        if self.write_access:
-            return immortal.imm_level >= self.write_access
-        return immortal.imm_level >= self.imm_level
-
-    def change_owner(self, new_owner=None):
-        self._on_db_deleted()
-        self.owner_id = new_owner or 'lampost'
-        self._on_db_created()
+class PropertyDBO(CoreDBO):
+    _oid = OID
 
 
 class KeyDBO(CoreDBO):
@@ -225,8 +190,7 @@ class KeyDBO(CoreDBO):
         op_status.refs_used = set()
         self.capture_oids()
         if dto:
-            dto.update(self.hidden_value)
-            self.hydrate(dto)
+            self.edit_hydrate(dto)
         else:
             self.hydrate(self.save_value)
         db.save_object(self)
@@ -248,7 +212,50 @@ class KeyDBO(CoreDBO):
         return self.save_value, op_status.save_value_refs
 
 
-class ParentDBO(KeyDBO, OwnerDBO):
+class SystemDBO(KeyDBO):
+    def can_read(self, immortal):
+        return True
+
+    def can_write(self, immortal):
+        return perm.is_supreme(immortal) or immortal.imm_level > getattr(self, 'imm_level', 0)
+
+
+class OwnerDBO(KeyDBO):
+    owner_id = DBOField('lampost')
+    read_access = DBOField(0)
+    write_access = DBOField(0)
+
+    @property
+    def imm_level(self):
+        try:
+            return perm.immortals[self.owner_id] + 1
+        except KeyError:
+            return perm.perm_to_level('admin')
+
+    def _on_db_created(self):
+        log.info("{} created new object {}", self.owner_id, self.dbo_key)
+        db.add_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
+
+    def _on_db_deleted(self):
+        db.delete_set_key('owned:{}'.format(self.owner_id), self.dbo_key)
+
+    def can_read(self, immortal):
+        return immortal.imm_level >= self.read_access
+
+    def can_write(self, immortal):
+        if perm.is_supreme(immortal) or immortal.dbo_id == self.owner_id:
+            return True
+        if self.write_access:
+            return immortal.imm_level >= self.write_access
+        return immortal.imm_level >= self.imm_level
+
+    def change_owner(self, new_owner=None):
+        self._on_db_deleted()
+        self.owner_id = new_owner or 'lampost'
+        self._on_db_created()
+
+
+class ParentDBO(OwnerDBO):
 
     @property
     def edit_dto(self):

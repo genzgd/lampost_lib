@@ -25,6 +25,7 @@ class OID:
     base_oid = 0
     next_oid = 0
     required = False
+    editable = True
 
     @classmethod
     def _force_value(cls, instance):
@@ -60,13 +61,12 @@ class OID:
         return dto_repr if dto_repr else cls._force_value(instance)
 
     @staticmethod
-    def capture_oids(instance):
+    def cmp_value(instance):
         pass
 
-
-def oid_class(cls):
-    cls.add_dbo_fields({'_oid' : OID})
-    return cls
+    @staticmethod
+    def capture_oids(instance):
+        pass
 
 
 class DBOField(AutoField):
@@ -81,11 +81,10 @@ class DBOField(AutoField):
         self.field = field
         if self.dbo_class_id:
             self._hydrate_func = get_hydrate_func(load_any, self.default, self.dbo_class_id)
-            self.dto_value = value_transform(to_dto_repr, self.default, field, for_json=True)
-            self.cmp_value = value_transform(to_save_repr, self.default, field)
-            self._save_value = value_transform(to_save_repr, self.default, field, for_json=True)
+            self.cmp_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id)
+            self.dto_value = value_transform(to_dto_repr, self.default, field, self.dbo_class_id, for_json=True)
+            self._save_value = value_transform(to_save_repr, self.default, field, self.dbo_class_id, for_json=True)
             self.capture_oids = value_exec(capture_oid, self.default, field)
-            self.merge_hidden = value_exec(merge_hidden, self.default, field)
         else:
             self._hydrate_func = from_json_func(self.default)
             self.cmp_value = raw_field(field)
@@ -229,7 +228,7 @@ def get_hydrate_func(load_func, default, class_id):
     return lambda instance, dto_repr: load_func(class_id, instance, dto_repr)
 
 
-def from_json_func(default):
+def from_json_func(default, *args):
     def _identity(instance, dto_repr):
         return dto_repr
     if default is None or isinstance(default, (collections.Mapping, str)):
@@ -254,29 +253,46 @@ def json_default(default):
     return default
 
 
-def value_transform(trans_func, default, field, for_json=False):
+def value_transform(trans_func, default, field, *init_args, for_json=False):
     if isinstance(default, dict):
-        return lambda instance, *exec_args: {key: res for key, res in ((key, trans_func(value, *exec_args)) \
-            for key, value in getattr(instance, field).items()) if res is not None}
+
+        def trans_values(instance, *trans_args):
+            args = init_args + trans_args
+            items = getattr(instance, field).items()
+            return {key: res for key, res in ((key, trans_func(value, *args)) for key, value in items) if res is not None}
+
+        return trans_values
+
     if isinstance(default, collections.MutableSequence):
-        field_class = [] if for_json else default.__class__
-        return lambda instance, *exec_args: field_class(res for res in (trans_func(value, *exec_args) \
-            for value in getattr(instance, field)) if res is not None)
-    return lambda instance, *exec_args: trans_func(getattr(instance, field), *exec_args)
+        field_class = list if for_json else default.__class__
+
+        def trans_values(instance, *trans_args):
+            args = init_args + trans_args
+            items = getattr(instance, field)
+            return field_class(res for res in (trans_func(value, *args) for value in items) if res is not None)
+
+        return trans_values
+
+    return lambda instance, *exec_args: trans_func(getattr(instance, field), *(init_args + exec_args))
 
 
-def value_exec(exec_func, default, field):
+def value_exec(exec_func, default, field, *init_args):
     if isinstance(default, dict):
+
         def _exec_values(instance, *exec_args):
             for instance in getattr(instance, field).values():
-                exec_func(instance, *exec_args)
+                exec_func(instance, *(init_args + exec_args))
+
         return _exec_values
+
     if isinstance(default, collections.MutableSequence):
+
         def _exec_items(instance, *exec_args):
             for value in getattr(instance, field):
-                exec_func(value, *exec_args)
+                exec_func(value, *(init_args + exec_args))
         return _exec_items
-    return lambda instance, *exec_args: exec_func(getattr(instance, field), *exec_args)
+
+    return lambda instance, *exec_args: exec_func(getattr(instance, field), *(init_args + exec_args))
 
 
 def capture_oid(dbo):
@@ -329,12 +345,6 @@ def to_save_repr(dbo, class_id):
         # we need to save the actual class_id
         save_value['class_id'] = dbo.class_id
     return save_value
-
-
-def merge_hidden(dbo, dto_repr):
-    if hasattr(dbo, 'dbo_id'):
-        return dto_repr
-    return dbo.merge_hidden(dto_repr)
 
 
 def to_dbo_key(dbo, class_id):
@@ -393,7 +403,7 @@ def load_any(class_id, dbo_owner, dto_repr):
         orig_dbo = op_status.update_refs.get(dto_repr.get('_oid'))
         if orig_dbo:
             op_status.refs_used.add(orig_dbo)
-            orig_dbo.hydrate(dto_repr)
+            orig_dbo.edit_hydrate(dto_repr)
             return orig_dbo
 
     # If this is a template, it should have a template key, so we load the template from the database using

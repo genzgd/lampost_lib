@@ -1,4 +1,4 @@
-from lampost.db.dbo import KeyDBO, SystemDBO
+from lampost.db.dbo import SystemDBO
 from lampost.db.dbofield import DBOField
 from lampost.di.resource import Injected, module_inject
 
@@ -6,7 +6,7 @@ perm = Injected('perm')
 module_inject(__name__)
 
 
-class User(KeyDBO, SystemDBO):
+class User(SystemDBO):
     dbo_key_type = "user"
     dbo_set_key = "users"
     dbo_indexes = "user_name", "email"

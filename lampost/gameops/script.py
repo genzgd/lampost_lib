@@ -5,8 +5,8 @@ from collections import defaultdict
 from lampost.di.app import on_app_start
 from lampost.di.resource import Injected, module_inject
 from lampost.meta.auto import AutoField
-from lampost.db.dbo import DBOAspect, CoreDBO
-from lampost.db.dbofield import DBOField, DBOLField, DBOCField, oid_class
+from lampost.db.dbo import DBOAspect, PropertyDBO
+from lampost.db.dbofield import DBOField, DBOLField, DBOCField
 
 log = Injected('log')
 ev = Injected('dispatcher')
@@ -123,8 +123,7 @@ class UserScript(DBOAspect):
         return self._script_func
 
 
-@oid_class
-class ScriptRef(CoreDBO):
+class ScriptRef(PropertyDBO):
     class_id = 'script_ref'
 
     func_name = DBOField('')

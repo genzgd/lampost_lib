@@ -1,8 +1,7 @@
 from collections import defaultdict
 
-from lampost.db.dbofield import oid_class
 from lampost.di.resource import Injected, module_inject
-from lampost.db.dbo import DBOField, ParentDBO, ChildDBO, CoreDBO
+from lampost.db.dbo import DBOField, ParentDBO, ChildDBO, PropertyDBO, SystemDBO
 
 log = Injected('log')
 db = Injected('datastore')
@@ -54,7 +53,7 @@ def create(config_id, raw_configs, set_defaults=False):
     return db.create_object(Config, {'dbo_id': config_id})
 
 
-class Config(ParentDBO):
+class Config(ParentDBO, SystemDBO):
     dbo_key_type = 'config'
     dbo_set_key = 'configs'
 
@@ -89,8 +88,7 @@ class ConfigSection(ChildDBO):
     settings = DBOField([], 'setting')
 
 
-@oid_class
-class Setting(CoreDBO):
+class Setting(PropertyDBO):
     class_id = 'setting'
     name = DBOField()
     value = DBOField()
