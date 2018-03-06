@@ -45,6 +45,7 @@ class CoreDBO(DBOAspect):
     dbo_owner = None
 
     def on_loaded(self):
+        call_mro(self, '_on_hydrated')
         call_mro(self, '_on_loaded')
 
     def hydrate(self, dto):
@@ -74,6 +75,8 @@ class CoreDBO(DBOAspect):
                     dbo_field.hydrate(self, dto[field])
                 else:
                     delattr(self, field)
+        call_mro(self, '_on_updated')
+        call_mro(self, '_on_hydrated')
 
     def clone(self):
         clone = self.__class__()

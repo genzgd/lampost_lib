@@ -296,7 +296,7 @@ def value_exec(exec_func, default, field, *init_args):
 
 
 def capture_oid(dbo):
-    if not hasattr(dbo, 'dbo_id'):
+    if dbo and not hasattr(dbo, 'dbo_id'):
         try:
             op_status.update_refs[dbo.__dict__['_oid']] = dbo
         except KeyError:

@@ -70,7 +70,7 @@ class Config(ParentDBO, SystemDBO):
                     return
         log.error("No setting found for {}:{}".format(section, name))
 
-    def _on_loaded(self):
+    def _on_hydrated(self):
         self.section_values = {}
         for child_key in self.dbo_child_keys('c_sect'):
             section = db.load_object(child_key, ConfigSection)

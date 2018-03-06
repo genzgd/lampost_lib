@@ -16,13 +16,21 @@ class Template(metaclass=CoreMeta):
     instance_cls = None
     _instances = AutoField(WeakSet())
 
+    def _on_hydrated(self):
+        self.call_instances('on_hydrated')
+
     def _on_loaded(self):
-        for instance in self._instances:
-            instance.on_loaded()
+        self.call_instances('_on_loaded')
+
+    def _on_updated(self):
+        self.call_instances('_on_updated')
 
     def _on_db_deleted(self):
+        self.call_instances('_on_db_deleted')
+
+    def call_instances(self, method):
         for instance in self._instances:
-            call_mro('_on_db_deleted', instance)
+            call_mro(method, instance)
 
     def create_instance(self, dbo_owner):
         instance = self.get_instance(dbo_owner)

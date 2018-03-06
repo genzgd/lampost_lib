@@ -153,18 +153,18 @@ class Scriptable(DBOAspect):
     script_refs = DBOCField([], 'script_ref')
     shadow_chains = AutoField(defaultdict(list))
 
-    def _pre_reload(self):
-        for name in  {name for name, value in self.__dict__.items() if hasattr(value, '_user_def')}:
-            del self.__dict__[name]
-        self.shadow_chains = defaultdict(list)
-
-    def _on_loaded(self):
+    def _on_hydrated(self):
         for script_ref in self.script_refs:
             script_ref.build(self)
         try:
             self.load_scripts()
         except Exception:
             log.exception("Exception on user defined 'load_scripts'")
+
+    def _on_updated(self):
+        for name in  {name for name, value in self.__dict__.items() if hasattr(value, '_user_def')}:
+            del self.__dict__[name]
+        del self.shadow_chains
 
     @Shadow
     def load_scripts(self, *args, **kwargs):
