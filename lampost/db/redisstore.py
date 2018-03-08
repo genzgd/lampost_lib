@@ -36,11 +36,14 @@ class RedisStore:
             log.warn("create_object called with empty dbo_id")
             return
         dbo_id = str(dbo_id).lower()
-        if self.object_exists(dbo_class.dbo_key_type, dbo_id):
-            raise ObjectExistsError(dbo_id)
         dbo = dbo_class()
         dbo.dbo_id = dbo_id
         dbo.hydrate(dbo_dict)
+        return self.insert_object(dbo, update_timestamp)
+
+    def insert_object(self, dbo, update_timestamp=True):
+        if self.object_exists(dbo.dbo_key_type, dbo.dbo_id):
+            raise ObjectExistsError(dbo.dbo_id)
         dbo.db_created()
         if dbo.dbo_set_key:
             self.redis.sadd(dbo.dbo_set_key, dbo.dbo_id)
@@ -57,7 +60,7 @@ class RedisStore:
                 dbo_key, dbo_id = ':'.join((key_type, dbo_key)), dbo_key
             except TypeError:
                 if not silent:
-                    log.exception("Invalid dbo_key passed to load_object", stack_info=True)
+                    log.exception("Invalid dbo_key {} passed to load_object", dbo_key, stack_info=True)
                 return
         else:
             key_type, _, dbo_id = dbo_key.partition(':')

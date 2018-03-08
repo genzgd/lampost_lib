@@ -62,7 +62,7 @@ class CoreDBO(DBOAspect):
             if not dbo_value and dbo_field.required:
                 missing_fields.append(field)
         if missing_fields:
-            log.warn("Missing required fields {} in class {} dto {}", ', '.join(missing_fields),
+            log.warn("Missing required field(s) {} in class {} dto {}", ', '.join(missing_fields),
                      cls_name(self.__class__), dto)
             return None
         self.on_loaded()

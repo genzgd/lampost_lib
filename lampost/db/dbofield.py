@@ -56,10 +56,6 @@ class OID:
     def dto_value(cls, instance):
         return cls._force_value(instance)
 
-    @classmethod
-    def merge_hidden(cls, instance, dto_repr):
-        return dto_repr if dto_repr else cls._force_value(instance)
-
     @staticmethod
     def cmp_value(instance):
         pass
@@ -89,7 +85,6 @@ class DBOField(AutoField):
             self._hydrate_func = from_json_func(self.default)
             self.cmp_value = raw_field(field)
             self.dto_value = self._save_value = to_json_func(self.default, field)
-            self.merge_hidden = lambda instance, dto_repr:  dto_repr if dto_repr is not None or self.editable else self.save_value(instance)
 
     def save_value(self, instance):
         value = self._save_value(instance)
@@ -356,7 +351,7 @@ def to_dbo_key(dbo, class_id):
 
 def load_keyed(class_id, dbo_owner, dbo_id):
     if dbo_id:
-        return db.load_object(dbo_id, class_id if class_id != "untyped" else None)
+        return db.load_object(dbo_id, None if class_id == 'untyped' else class_id)
 
 
 def save_keyed(class_id, dbo_owner, dto_repr):

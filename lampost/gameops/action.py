@@ -189,6 +189,9 @@ class ActionProvider(metaclass=CoreMeta):
     def action_providers(self):
         return itertools.chain((getattr(self, func_name) for func_name in self.class_providers), self.instance_providers)
 
+    def _on_updated(self):
+        del self.instance_providers
+
 
 @script_builder
 class ActionScriptBuilder:
